@@ -1,0 +1,5 @@
+1:1 STRING_LITERAL ""hello"" hello
+2:1 STRING_LITERAL ""a\\b"" a\b
+3:1 STRING_LITERAL ""quote: \\\""" quote: \"
+4:1 STRING_LITERAL ""line\\nfeed"" line\nfeed
+7:1 END_OF_FILE ""

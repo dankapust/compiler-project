@@ -1,0 +1,8 @@
+1:1 BOOL_LITERAL "true" True
+1:6 BOOL_LITERAL "false" False
+1:12 KW_BOOL "bool"
+1:17 IDENTIFIER "flag"
+1:22 ASSIGN "="
+1:24 BOOL_LITERAL "true" True
+1:28 SEMICOLON ";"
+4:1 END_OF_FILE ""

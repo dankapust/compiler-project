@@ -1,0 +1,2 @@
+1:1 ERROR ""hello" unterminated string literal
+4:1 END_OF_FILE ""

@@ -1,0 +1,5 @@
+// comment only line
+int x = 1; // trailing comment
+/* block comment */ int y=2;
+
+

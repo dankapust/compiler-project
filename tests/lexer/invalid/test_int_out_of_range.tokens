@@ -1,0 +1,2 @@
+1:1 ERROR "2147483648" integer literal out of 32-bit range
+4:1 END_OF_FILE ""

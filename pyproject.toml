@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-compiler"
+version = "0.1.0"
+description = "MiniCompiler (Sprint 1): lexical analysis (tokenization) for a simplified C-like language."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "MiniCompiler Team" }
+]
+dependencies = []
+
+[project.scripts]
+compiler = "cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = ["cli"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
