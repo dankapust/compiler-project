@@ -6,13 +6,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Allow running tests without installing the package
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 
-from lexer.scanner import Scanner  # noqa: E402
-from lexer.token import TokenType  # noqa: E402
-from preprocessor.preprocessor import Preprocessor  # noqa: E402
+from lexer.scanner import Scanner
+from lexer.token import TokenType
+from preprocessor.preprocessor import Preprocessor
 
 
 @dataclass(frozen=True)
@@ -56,7 +55,6 @@ def _run_case(src_path: Path, update: bool) -> CaseResult:
             tofile=str(src_path) + " (actual)",
         )
     )
-    # also write actual for convenience
     src_path.with_suffix(".tokens.actual").write_text(actual, encoding="utf-8")
     return CaseResult(name=str(src_path), ok=False, diff=diff)
 

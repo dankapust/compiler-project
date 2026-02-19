@@ -23,7 +23,6 @@ _KEYWORDS: dict[str, TokenType] = {
 _BOOL_LITERALS: dict[str, bool] = {"true": True, "false": False}
 _NULL_LITERAL = "null"
 
-# (list of (second_char, TokenType), single_char TokenType | None, error_msg for single char | None)
 _OpEntry = tuple[list[tuple[str, TokenType]], TokenType | None, str | None]
 
 _OPERATOR_TABLE: dict[str, _OpEntry] = {
@@ -61,13 +60,6 @@ class _Cursor:
 
 
 class Scanner:
-    """
-    Sprint 1 scanner:
-    - Produces tokens with (line, column) positions (1-indexed).
-    - Skips whitespace and comments.
-    - Emits TokenType.ERROR for recoverable lexical errors and continues scanning.
-    """
-
     def __init__(self, source: str):
         self._src = source
         self._cur = _Cursor()
@@ -77,8 +69,6 @@ class Scanner:
         self._start_i = 0
         self._start_line = 1
         self._start_col = 1
-
-    # --- Public API (LEX-2) ---
 
     def next_token(self) -> Token:
         if self._peeked is not None:
@@ -101,8 +91,6 @@ class Scanner:
     def get_column(self) -> int:
         return self._cur.col
 
-    # --- Core scanning ---
-
     def _scan_token(self) -> Token:
         if self._pending_error is not None:
             t = self._pending_error
@@ -119,13 +107,11 @@ class Scanner:
         self._start_col = self._cur.col
         c = self._advance()
 
-        # Identifier-like that starts with underscore is invalid (LANG-3).
         if c == "_":
             while _is_alnum_or_underscore(self._peek_char()):
                 self._advance()
             return self._err(self._lex(), "identifier cannot start with underscore")
 
-        # Identifiers / keywords / bool / null
         if _is_alpha(c):
             while _is_alnum_or_underscore(self._peek_char()):
                 self._advance()
@@ -138,7 +124,6 @@ class Scanner:
                 return self._tok(TokenType.NULL_LITERAL, lex, None)
             return self._tok(_KEYWORDS.get(lex, TokenType.IDENTIFIER), lex, None)
 
-        # Numbers
         if c.isdigit():
             while self._peek_char().isdigit():
                 self._advance()
@@ -165,7 +150,6 @@ class Scanner:
                 return self._err(lex, "integer literal out of 32-bit range")
             return self._tok(TokenType.INT_LITERAL, lex, val)
 
-        # String
         if c == '"':
             s = []
             while True:
@@ -190,7 +174,6 @@ class Scanner:
                     continue
                 s.append(self._advance())
 
-        # Operators & delimiters (one table lookup, maximal munch)
         entry = _OPERATOR_TABLE.get(c)
         if entry is not None:
             two_char_list, single_tt, err_msg = entry
@@ -216,8 +199,8 @@ class Scanner:
                 self._advance_newline()
                 continue
             if c == "/" and self._peek_next_char() == "/":
-                self._advance()  # '/'
-                self._advance()  # '/'
+                self._advance()
+                self._advance()
                 while not self.is_at_end() and self._peek_char() not in _NEWLINE_CHARS:
                     self._advance()
                 continue
@@ -225,13 +208,12 @@ class Scanner:
             if c == "/" and self._peek_next_char() == "*":
                 start_line = self._cur.line
                 start_col = self._cur.col
-                self._advance()  # '/'
-                self._advance()  # '*'
+                self._advance()
+                self._advance()
                 depth = 1
                 while depth > 0:
                     if self.is_at_end():
                         self._add_error(start_line, start_col, "unterminated block comment")
-                        # Emit one ERROR token, then END_OF_FILE (recovery).
                         self._pending_error = Token(
                             TokenType.ERROR,
                             "/*",
@@ -256,8 +238,6 @@ class Scanner:
                 continue
 
             return
-
-    # --- Low-level helpers ---
 
     def _peek_char(self) -> str:
         if self.is_at_end():
@@ -286,7 +266,6 @@ class Scanner:
         return True
 
     def _advance_newline(self) -> None:
-        # Supports '\n' and '\r\n' and bare '\r'
         if self._peek_char() == "\r":
             self._advance()
             if self._peek_char() == "\n":
@@ -299,8 +278,6 @@ class Scanner:
         self._cur.col = 1
 
     def _rewind_one_for_newline(self, ch: str) -> None:
-        # We already advanced 1 char, but if it's newline marker, we want to handle it
-        # via _advance_newline() to apply CRLF logic and line/col reset.
         self._cur.i -= 1
         self._cur.col -= 1
         assert self._src[self._cur.i] == ch
