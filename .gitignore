@@ -12,5 +12,6 @@ build/
 tokens.txt
 *.tokens.actual
 *.tokens.diff
-
-
+ast.txt
+ast.dot
+ast.json

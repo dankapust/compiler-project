@@ -23,6 +23,35 @@ _KEYWORDS: dict[str, TokenType] = {
 _BOOL_LITERALS: dict[str, bool] = {"true": True, "false": False}
 _NULL_LITERAL = "null"
 
+# (list of (second_char, TokenType), single_char TokenType | None, error_msg for single char | None)
+_OpEntry = tuple[list[tuple[str, TokenType]], TokenType | None, str | None]
+
+_OPERATOR_TABLE: dict[str, _OpEntry] = {
+    "&": ([("&", TokenType.AND_AND)], None, "unexpected character '&' (did you mean '&&'?)"),
+    "|": ([("|", TokenType.OR_OR)], None, "unexpected character '|' (did you mean '||'?)"),
+    "=": ([("=", TokenType.EQUAL_EQUAL)], TokenType.ASSIGN, None),
+    "!": ([("=", TokenType.BANG_EQUAL)], TokenType.BANG, None),
+    "<": ([("=", TokenType.LESS_EQUAL)], TokenType.LESS, None),
+    ">": ([("=", TokenType.GREATER_EQUAL)], TokenType.GREATER, None),
+    "+": ([("=", TokenType.PLUS_ASSIGN)], TokenType.PLUS, None),
+    "-": ([("=", TokenType.MINUS_ASSIGN), (">", TokenType.ARROW)], TokenType.MINUS, None),
+    "*": ([("=", TokenType.STAR_ASSIGN)], TokenType.STAR, None),
+    "/": ([("=", TokenType.SLASH_ASSIGN)], TokenType.SLASH, None),
+    "%": ([("=", TokenType.PERCENT_ASSIGN)], TokenType.PERCENT, None),
+    "(": ([], TokenType.LPAREN, None),
+    ")": ([], TokenType.RPAREN, None),
+    "{": ([], TokenType.LBRACE, None),
+    "}": ([], TokenType.RBRACE, None),
+    "[": ([], TokenType.LBRACKET, None),
+    "]": ([], TokenType.RBRACKET, None),
+    ",": ([], TokenType.COMMA, None),
+    ";": ([], TokenType.SEMICOLON, None),
+}
+
+_WHITESPACE_SPACE_TAB = (" ", "\t")
+_NEWLINE_CHARS = ("\n", "\r")
+_ESCAPE_CHARS = frozenset("\\\"ntr")
+
 
 @dataclass
 class _Cursor:
@@ -45,6 +74,9 @@ class Scanner:
         self._peeked: Token | None = None
         self._pending_error: Token | None = None
         self.errors: list[ScanError] = []
+        self._start_i = 0
+        self._start_line = 1
+        self._start_col = 1
 
     # --- Public API (LEX-2) ---
 
@@ -82,200 +114,111 @@ class Scanner:
         if self.is_at_end():
             return Token(TokenType.END_OF_FILE, "", self._cur.line, self._cur.col, None)
 
-        start_i = self._cur.i
-        start_line = self._cur.line
-        start_col = self._cur.col
-
+        self._start_i = self._cur.i
+        self._start_line = self._cur.line
+        self._start_col = self._cur.col
         c = self._advance()
 
-        # Identifier-like that starts with underscore is invalid by spec (Sprint 1 LANG-3).
-        # Consume the whole run to avoid cascaded errors like: '_' ERROR then 'x' IDENTIFIER.
+        # Identifier-like that starts with underscore is invalid (LANG-3).
         if c == "_":
             while _is_alnum_or_underscore(self._peek_char()):
                 self._advance()
-            lex = self._src[start_i : self._cur.i]
-            return self._error_token(start_line, start_col, lex, "identifier cannot start with underscore")
+            return self._err(self._lex(), "identifier cannot start with underscore")
 
-        # Identifiers / keywords / bool
+        # Identifiers / keywords / bool / null
         if _is_alpha(c):
             while _is_alnum_or_underscore(self._peek_char()):
                 self._advance()
-            lex = self._src[start_i : self._cur.i]
+            lex = self._lex()
             if len(lex) > 255:
-                return self._error_token(
-                    start_line,
-                    start_col,
-                    lex,
-                    "identifier exceeds maximum length (255)",
-                )
+                return self._err(lex, "identifier exceeds maximum length (255)")
             if lex in _BOOL_LITERALS:
-                return Token(TokenType.BOOL_LITERAL, lex, start_line, start_col, _BOOL_LITERALS[lex])
+                return self._tok(TokenType.BOOL_LITERAL, lex, _BOOL_LITERALS[lex])
             if lex == _NULL_LITERAL:
-                return Token(TokenType.NULL_LITERAL, lex, start_line, start_col, None)
-            kw = _KEYWORDS.get(lex)
-            if kw is not None:
-                return Token(kw, lex, start_line, start_col, None)
-            return Token(TokenType.IDENTIFIER, lex, start_line, start_col, None)
+                return self._tok(TokenType.NULL_LITERAL, lex, None)
+            return self._tok(_KEYWORDS.get(lex, TokenType.IDENTIFIER), lex, None)
 
         # Numbers
         if c.isdigit():
             while self._peek_char().isdigit():
                 self._advance()
-
-            # Float?
             if self._peek_char() == "." and self._peek_next_char().isdigit():
-                self._advance()  # '.'
+                self._advance()
                 while self._peek_char().isdigit():
                     self._advance()
-
-                # Malformed number: second '.' followed by digit
                 if self._peek_char() == "." and self._peek_next_char().isdigit():
                     self._advance()
-                    while True:
-                        p = self._peek_char()
-                        if p.isdigit() or p == ".":
-                            self._advance()
-                        else:
-                            break
-                    lex = self._src[start_i : self._cur.i]
-                    return self._error_token(start_line, start_col, lex, "malformed number literal")
-
-                lex = self._src[start_i : self._cur.i]
+                    while self._peek_char().isdigit() or self._peek_char() == ".":
+                        self._advance()
+                    return self._err(self._lex(), "malformed number literal")
+                lex = self._lex()
                 try:
-                    val = float(lex)
+                    return self._tok(TokenType.FLOAT_LITERAL, lex, float(lex))
                 except ValueError:
-                    return self._error_token(start_line, start_col, lex, "malformed float literal")
-                return Token(TokenType.FLOAT_LITERAL, lex, start_line, start_col, val)
-
-            # Integer
-            lex = self._src[start_i : self._cur.i]
+                    return self._err(lex, "malformed float literal")
+            lex = self._lex()
             try:
                 val = int(lex)
             except ValueError:
-                return self._error_token(start_line, start_col, lex, "malformed integer literal")
+                return self._err(lex, "malformed integer literal")
             if val < -(2**31) or val > (2**31 - 1):
-                return self._error_token(start_line, start_col, lex, "integer literal out of 32-bit range")
-            return Token(TokenType.INT_LITERAL, lex, start_line, start_col, val)
+                return self._err(lex, "integer literal out of 32-bit range")
+            return self._tok(TokenType.INT_LITERAL, lex, val)
 
         # String
         if c == '"':
             s = []
             while True:
                 if self.is_at_end():
-                    lex = self._src[start_i : self._cur.i]
-                    return self._error_token(start_line, start_col, lex, "unterminated string literal")
+                    return self._err(self._lex(), "unterminated string literal")
                 p = self._peek_char()
                 if p == '"':
                     self._advance()
-                    lex = self._src[start_i : self._cur.i]
-                    return Token(TokenType.STRING_LITERAL, lex, start_line, start_col, "".join(s))
-                if p == "\n" or p == "\r":
-                    lex = self._src[start_i : self._cur.i]
-                    return self._error_token(start_line, start_col, lex, "unterminated string literal")
+                    return self._tok(TokenType.STRING_LITERAL, self._lex(), "".join(s))
+                if p in _NEWLINE_CHARS:
+                    return self._err(self._lex(), "unterminated string literal")
                 if p == "\\":
-                    self._advance()  # '\'
+                    self._advance()
                     esc = self._peek_char()
-                    if esc in ['\\', '"', "n", "t", "r"]:
+                    if esc in _ESCAPE_CHARS:
                         self._advance()
                         s.append(_unescape(esc))
                     else:
-                        # Unknown escape: keep raw char (Sprint 1 permissive) but record error.
-                        err_line = self._cur.line
-                        err_col = self._cur.col
+                        self._add_error(self._cur.line, self._cur.col, f"unknown escape sequence \\{esc}")
                         self._advance()
-                        self._add_error(err_line, err_col, f"unknown escape sequence \\{esc}")
                         s.append(esc)
                     continue
                 s.append(self._advance())
 
-        # Operators & delimiters (maximal munch: try multi-char before single-char)
-        if c == "&":
-            if self._match("&"):
-                return Token(TokenType.AND_AND, "&&", start_line, start_col, None)
-            return self._error_token(start_line, start_col, "&", "unexpected character '&' (did you mean '&&'?)")
+        # Operators & delimiters (one table lookup, maximal munch)
+        entry = _OPERATOR_TABLE.get(c)
+        if entry is not None:
+            two_char_list, single_tt, err_msg = entry
+            for second, tok_type in two_char_list:
+                if self._match(second):
+                    return self._tok(tok_type, c + second, None)
+            if single_tt is not None:
+                return self._tok(single_tt, c, None)
+            if err_msg is not None:
+                return self._err(c, err_msg)
 
-        if c == "=":
-            if self._match("="):
-                return Token(TokenType.EQUAL_EQUAL, "==", start_line, start_col, None)
-            return Token(TokenType.ASSIGN, "=", start_line, start_col, None)
-
-        if c == "!":
-            if self._match("="):
-                return Token(TokenType.BANG_EQUAL, "!=", start_line, start_col, None)
-            return Token(TokenType.BANG, "!", start_line, start_col, None)
-
-        if c == "<":
-            if self._match("="):
-                return Token(TokenType.LESS_EQUAL, "<=", start_line, start_col, None)
-            return Token(TokenType.LESS, "<", start_line, start_col, None)
-
-        if c == ">":
-            if self._match("="):
-                return Token(TokenType.GREATER_EQUAL, ">=", start_line, start_col, None)
-            return Token(TokenType.GREATER, ">", start_line, start_col, None)
-
-        if c == "+":
-            if self._match("="):
-                return Token(TokenType.PLUS_ASSIGN, "+=", start_line, start_col, None)
-            return Token(TokenType.PLUS, "+", start_line, start_col, None)
-
-        if c == "-":
-            if self._match("="):
-                return Token(TokenType.MINUS_ASSIGN, "-=", start_line, start_col, None)
-            if self._match(">"):
-                return Token(TokenType.ARROW, "->", start_line, start_col, None)
-            return Token(TokenType.MINUS, "-", start_line, start_col, None)
-
-        if c == "|":
-            if self._match("|"):
-                return Token(TokenType.OR_OR, "||", start_line, start_col, None)
-            return self._error_token(start_line, start_col, "|", "unexpected character '|' (did you mean '||'?)")
-
-        if c == "*":
-            if self._match("="):
-                return Token(TokenType.STAR_ASSIGN, "*=", start_line, start_col, None)
-            return Token(TokenType.STAR, "*", start_line, start_col, None)
-
-        if c == "/":
-            if self._match("="):
-                return Token(TokenType.SLASH_ASSIGN, "/=", start_line, start_col, None)
-            return Token(TokenType.SLASH, "/", start_line, start_col, None)
-
-        if c == "%":
-            if self._match("="):
-                return Token(TokenType.PERCENT_ASSIGN, "%=", start_line, start_col, None)
-            return Token(TokenType.PERCENT, "%", start_line, start_col, None)
-
-        # Delimiters
-        t = _single_char_token(c)
-        if t is not None:
-            return Token(t, c, start_line, start_col, None)
-
-        # Invalid character
-        return self._error_token(start_line, start_col, c, f"invalid character: {repr(c)}")
+        return self._err(c, f"invalid character: {repr(c)}")
 
     def _skip_whitespace_and_comments(self) -> None:
         while True:
             if self.is_at_end():
                 return
             c = self._peek_char()
-
-            # Whitespace (incl. CRLF)
-            if c == " " or c == "\t":
+            if c in _WHITESPACE_SPACE_TAB:
                 self._advance()
                 continue
-            if c == "\n":
+            if c in _NEWLINE_CHARS:
                 self._advance_newline()
                 continue
-            if c == "\r":
-                self._advance_newline()
-                continue
-
-            # Comments
             if c == "/" and self._peek_next_char() == "/":
                 self._advance()  # '/'
                 self._advance()  # '/'
-                while not self.is_at_end() and self._peek_char() not in ("\n", "\r"):
+                while not self.is_at_end() and self._peek_char() not in _NEWLINE_CHARS:
                     self._advance()
                 continue
 
@@ -298,7 +241,7 @@ class Scanner:
                         )
                         return
                     ch = self._advance()
-                    if ch == "\n" or ch == "\r":
+                    if ch in _NEWLINE_CHARS:
                         self._rewind_one_for_newline(ch)
                         self._advance_newline()
                         continue
@@ -362,6 +305,16 @@ class Scanner:
         self._cur.col -= 1
         assert self._src[self._cur.i] == ch
 
+    def _lex(self) -> str:
+        return self._src[self._start_i : self._cur.i]
+
+    def _tok(self, typ: TokenType, lexeme: str, literal: object = None) -> Token:
+        return Token(typ, lexeme, self._start_line, self._start_col, literal)
+
+    def _err(self, lexeme: str, message: str) -> Token:
+        self._add_error(self._start_line, self._start_col, message)
+        return Token(TokenType.ERROR, lexeme, self._start_line, self._start_col, message)
+
     def _add_error(self, line: int, col: int, message: str) -> None:
         self.errors.append(ScanError(message=message, line=line, column=col))
 
@@ -376,19 +329,6 @@ def _is_alpha(c: str) -> bool:
 
 def _is_alnum_or_underscore(c: str) -> bool:
     return _is_alpha(c) or c.isdigit() or c == "_"
-
-
-def _single_char_token(c: str) -> TokenType | None:
-    return {
-        "(": TokenType.LPAREN,
-        ")": TokenType.RPAREN,
-        "{": TokenType.LBRACE,
-        "}": TokenType.RBRACE,
-        "[": TokenType.LBRACKET,
-        "]": TokenType.RBRACKET,
-        ",": TokenType.COMMA,
-        ";": TokenType.SEMICOLON,
-    }.get(c)
 
 
 def _unescape(esc: str) -> str:

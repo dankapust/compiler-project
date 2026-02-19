@@ -51,67 +51,32 @@ python -m pip install -U build
 python -m build
 ```
 
-### Команды для демонстрации работы
-
-Из корня проекта (`Kompilator`):
-
-```bash
-# 1. Установка (один раз)
-python -m pip install -e .
-
-# 2. Токенизация примера — вывод в файл
-#    (на Windows команда compiler часто не в PATH — используйте вариант ниже)
-python -m cli lex --input examples/hello.src --output tokens.txt
-
-# Просмотр результата (Windows)
-type tokens.txt
-
-# Вариант через compiler (если папка Scripts в PATH):
-# compiler lex --input examples/hello.src --output tokens.txt
-
-# 3. Запуск всех тестов лексера
-python -m tests.test_runner --only lexer
-
-# 4. Запуск всех тестов (лексер + препроцессор)
-python -m tests.test_runner
-```
-
 ### Quick Start (STR-3)
 
-**Лексический анализ (LEX-2):**
+Из корня проекта:
 
 ```bash
-compiler lex --input examples/hello.src --output tokens.txt
-```
+# Установка (один раз)
+python -m pip install -e .
 
-Если команда `compiler` не находится (Windows), запуск через модуль:
-
-```bash
+# Токенизация примера (LEX-2). На Windows предпочтительно:
 python -m cli lex --input examples/hello.src --output tokens.txt
+# Или, если compiler в PATH:  compiler lex --input examples/hello.src --output tokens.txt
+
+# Просмотр:  type tokens.txt   (Windows)  или  cat tokens.txt
+
+# Тесты (TEST-4): все — одной командой
+python -m tests.test_runner
+# Только лексер:  python -m tests.test_runner --only lexer
 ```
 
-Опции лексера: `--input`, `--output`, `--no-preprocess` (пропустить препроцессор), `--fail-on-error` (код выхода 1 при ошибках лексики).
+Опции лексера: `--input`, `--output`, `--no-preprocess`, `--fail-on-error`.
 
 ### Preprocessor (Sprint 1 Stretch, optional)
 
 Препроцессор можно использовать перед лексическим анализом: удаление комментариев, макросы `#define`, `#ifdef` и т.д. По умолчанию включён. Отключить: `compiler lex --no-preprocess ...`
 
-### Run Tests (TEST-3, TEST-4)
-
-**Запуск всех тестов одной командой:**
-
-```bash
-python -m tests.test_runner
-```
-
-**Только лексер / только препроцессор:**
-
-```bash
-python -m tests.test_runner --only lexer
-python -m tests.test_runner --only preprocessor
-```
-
-**Формат вывода токенов (TEST-3):**
+### Формат вывода токенов (TEST-3)
 
 ```text
 LINE:COLUMN TOKEN_TYPE "LEXEME" [LITERAL_VALUE]
@@ -135,3 +100,14 @@ LINE:COLUMN TOKEN_TYPE "LEXEME" [LITERAL_VALUE]
 ```
 
 Ожидаемые результаты хранятся в файлах `.tokens` рядом с каждым `.src` в `tests/lexer/valid/` и `tests/lexer/invalid/`. При расхождении выводится diff. Обновить эталоны: `python -m tests.test_runner --update`.
+
+---
+
+### Соответствие Sprint 1 (чеклист)
+
+| Область | Требования |
+|--------|------------|
+| **STR** | STR-1 структура ✓, STR-2 pyproject.toml + entry points ✓, STR-3 README ✓, STR-4 модули lexer/token/utils ✓ |
+| **LANG** | docs/language_spec.md: EBNF, ключевые слова (LANG-2), идентификаторы 255 (LANG-3), литералы (LANG-4), операторы/разделители (LANG-5), пробелы/комментарии (LANG-6) ✓ |
+| **LEX** | Token: type, lexeme, line, col, literal (LEX-1). Scanner: конструктор, next_token, peek_token, is_at_end, get_line/get_column (LEX-2). Все токены и EOF (LEX-3). Позиции и CRLF (LEX-4). Ошибки с позицией, восстановление (LEX-5) ✓ |
+| **TEST** | valid/ + invalid/ (TEST-2), формат LINE:COLUMN TOKEN "LEXEME" [VALUE] (TEST-3), test_runner с diff (TEST-4), ≥20 valid / ≥10 invalid (TEST-5) ✓ |
