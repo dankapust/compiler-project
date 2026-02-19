@@ -49,7 +49,8 @@ keyword     = "if" | "else" | "while" | "for" | "int" | "float" | "bool"
 operator    = "+" | "-" | "*" | "/" | "%" 
             | "==" | "!=" | "<" | "<=" | ">" | ">="
             | "=" | "+=" | "-=" | "*=" | "/=" | "%="
-            | "&&" ;
+            | "&&" | "||"
+            | "!" | "->" ;
 
 delimiter   = "(" | ")" | "{" | "}" | "[" | "]" | "," | ";" ;
 ```
@@ -81,6 +82,9 @@ delimiter   = "(" | ")" | "{" | "}" | "[" | "]" | "," | ";" ;
 - Arithmetic: `+ - * / %`
 - Relational: `== != < <= > >=`
 - Logical: `&&`
+- Logical OR: `||`
+- Unary NOT: `!`
+- Function return type arrow: `->`
 - Assignment (used by lexer tests): `= += -= *= /= %=`
 - Delimiters: `(` `)` `{` `}` `[` `]` `,` `;`
 

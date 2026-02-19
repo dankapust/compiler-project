@@ -16,6 +16,7 @@ class TokenType(Enum):
     FLOAT_LITERAL = auto()
     STRING_LITERAL = auto()
     BOOL_LITERAL = auto()
+    NULL_LITERAL = auto()
 
     # Keywords
     KW_IF = auto()
@@ -33,9 +34,12 @@ class TokenType(Enum):
     # Operators
     PLUS = auto()
     MINUS = auto()
+    BANG = auto()
     STAR = auto()
     SLASH = auto()
     PERCENT = auto()
+
+    ARROW = auto()  # ->
 
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
@@ -51,6 +55,7 @@ class TokenType(Enum):
     GREATER = auto()
     GREATER_EQUAL = auto()
     AND_AND = auto()
+    OR_OR = auto()
 
     # Delimiters
     LPAREN = auto()

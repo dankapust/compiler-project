@@ -1,0 +1,12 @@
+digraph AST {
+  node [shape=box, fontname=Consolas];
+  n1 [label="ProgramNode\\n1:1", style=filled, fillcolor="lightgray"];
+  n2 [label="FunctionDeclNode\\n1:1\\nname='main', return_type='void'", style=filled, fillcolor="lightblue"];
+  n3 [label="BlockStmtNode\\n1:11", style=filled, fillcolor="lightyellow"];
+  n4 [label="VarDeclStmtNode\\n2:9\\nname='counter', type_name='int'", style=filled, fillcolor="lightyellow"];
+  n5 [label="LiteralExprNode\\n2:19\\nvalue=42", style=filled, fillcolor="palegreen"];
+  n1 -> n2 [label="declarations[0]"];
+  n2 -> n3 [label="body"];
+  n3 -> n4 [label="statements[0]"];
+  n4 -> n5 [label="initializer"];
+}

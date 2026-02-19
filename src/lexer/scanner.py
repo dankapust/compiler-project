@@ -21,6 +21,7 @@ _KEYWORDS: dict[str, TokenType] = {
 }
 
 _BOOL_LITERALS: dict[str, bool] = {"true": True, "false": False}
+_NULL_LITERAL = "null"
 
 
 @dataclass
@@ -109,6 +110,8 @@ class Scanner:
                 )
             if lex in _BOOL_LITERALS:
                 return Token(TokenType.BOOL_LITERAL, lex, start_line, start_col, _BOOL_LITERALS[lex])
+            if lex == _NULL_LITERAL:
+                return Token(TokenType.NULL_LITERAL, lex, start_line, start_col, None)
             kw = _KEYWORDS.get(lex)
             if kw is not None:
                 return Token(kw, lex, start_line, start_col, None)
@@ -199,7 +202,7 @@ class Scanner:
         if c == "!":
             if self._match("="):
                 return Token(TokenType.BANG_EQUAL, "!=", start_line, start_col, None)
-            return self._error_token(start_line, start_col, "!", "invalid character: '!'")
+            return Token(TokenType.BANG, "!", start_line, start_col, None)
 
         if c == "<":
             if self._match("="):
@@ -219,7 +222,14 @@ class Scanner:
         if c == "-":
             if self._match("="):
                 return Token(TokenType.MINUS_ASSIGN, "-=", start_line, start_col, None)
+            if self._match(">"):
+                return Token(TokenType.ARROW, "->", start_line, start_col, None)
             return Token(TokenType.MINUS, "-", start_line, start_col, None)
+
+        if c == "|":
+            if self._match("|"):
+                return Token(TokenType.OR_OR, "||", start_line, start_col, None)
+            return self._error_token(start_line, start_col, "|", "unexpected character '|' (did you mean '||'?)")
 
         if c == "*":
             if self._match("="):

@@ -12,6 +12,7 @@ sys.path.insert(0, str(_ROOT / "src"))
 
 from lexer.scanner import Scanner  # noqa: E402
 from lexer.token import TokenType  # noqa: E402
+from preprocessor.preprocessor import Preprocessor  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,10 @@ class CaseResult:
     diff: str | None = None
 
 
-def _tokenize_text(text: str) -> str:
+def _tokenize_text(text: str, use_preprocessor: bool = True) -> str:
+    if use_preprocessor:
+        pp = Preprocessor(text)
+        text = pp.process()
     sc = Scanner(text)
     out_lines: list[str] = []
     while True:
@@ -62,22 +66,56 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--update",
         action="store_true",
-        help="Write/update all expected .tokens files from current lexer output",
+        help="Write/update all expected golden files from current output",
+    )
+    parser.add_argument(
+        "--only",
+        choices=["all", "lexer", "preprocessor"],
+        default="all",
+        help="Run only lexer tests, preprocessor tests, or all",
     )
     args = parser.parse_args(argv)
 
     root = _ROOT
-    valid_dir = root / "tests" / "lexer" / "valid"
-    invalid_dir = root / "tests" / "lexer" / "invalid"
-
-    cases = sorted(valid_dir.glob("*.src")) + sorted(invalid_dir.glob("*.src"))
-    if not cases:
-        print("No test cases found.", file=sys.stderr)
-        return 2
+    lexer_valid_dir = root / "tests" / "lexer" / "valid"
+    lexer_invalid_dir = root / "tests" / "lexer" / "invalid"
 
     results: list[CaseResult] = []
-    for c in cases:
-        results.append(_run_case(c, update=args.update))
+
+    if args.only in ("all", "lexer"):
+        lexer_cases = sorted(lexer_valid_dir.glob("*.src")) + sorted(lexer_invalid_dir.glob("*.src"))
+        if not lexer_cases:
+            print("No lexer test cases found.", file=sys.stderr)
+            return 2
+        for c in lexer_cases:
+            results.append(_run_case(c, update=args.update))
+
+    if args.only in ("all", "preprocessor"):
+        import importlib.util
+        test_path = root / "tests" / "preprocessor" / "test_preprocessor.py"
+        spec = importlib.util.spec_from_file_location("test_preprocessor", test_path)
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            failed = []
+            for name in dir(mod):
+                if name.startswith("test_"):
+                    func = getattr(mod, name)
+                    if callable(func):
+                        try:
+                            func()
+                        except AssertionError as e:
+                            failed.append(f"{name}: {e}")
+                        except Exception as e:
+                            failed.append(f"{name}: {type(e).__name__}: {e}")
+            if failed:
+                results.append(CaseResult(name="preprocessor unit tests", ok=False, diff="\n".join(failed)))
+            else:
+                results.append(CaseResult(name="preprocessor unit tests", ok=True, diff=None))
+
+    if not results:
+        print("No test cases found.", file=sys.stderr)
+        return 2
 
     failed = [r for r in results if not r.ok]
     for r in results:

@@ -1,0 +1,6 @@
+#define MAX 100
+
+fn main() {
+    int x = MAX;
+    int y = MAX + 1;
+}
