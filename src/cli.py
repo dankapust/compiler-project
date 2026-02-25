@@ -10,6 +10,7 @@ from preprocessor.preprocessor import Preprocessor
 
 
 def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
+    """Apply preprocessor if enabled. Return (source, preprocessor_errors)."""
     if not use_preprocessor:
         return source, []
     pp = Preprocessor(source)

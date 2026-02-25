@@ -1,3 +1,5 @@
+"""Preprocessor: comment removal and simple macros (Sprint 1 Stretch Goal)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,6 +7,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PreprocessorError:
+    """Preprocessor error with line/column."""
+
     message: str
     line: int
     column: int
@@ -22,28 +26,41 @@ def _is_identifier_part(c: str) -> bool:
 
 
 class Preprocessor:
+    """
+    Preprocessor for comment removal and simple macros.
+
+    PRE-1: Removes // and /* */ comments, preserves line numbering.
+    PRE-2: Supports #define NAME value, #ifdef, #ifndef, #endif.
+    PRE-3: Preprocessor(source), process(), define(), undefine().
+    PRE-4: Comments in strings preserved, unterminated comments error, no macro recursion.
+    """
+
     def __init__(self, source: str):
         self._source = source
         self._macros: dict[str, str] = {}
         self.errors: list[PreprocessorError] = []
 
     def define(self, name: str, value: str) -> None:
+        """Define a macro (programmatic API)."""
         self._macros[name] = value
 
     def undefine(self, name: str) -> None:
+        """Undefine a macro (programmatic API)."""
         self._macros.pop(name, None)
 
     def process(self) -> str:
+        """Return cleaned source with comments removed and macros expanded."""
         self.errors.clear()
         result = self._process_directives_and_expand()
         result = self._remove_comments(result)
         return result
 
     def _process_directives_and_expand(self) -> str:
+        """Process directives and expand macros per-line. Return source with conditionals resolved."""
         lines = self._source.split("\n")
         output_lines: list[str] = []
         i = 0
-        skip_depth = 0
+        skip_depth = 0  # How many nested #ifdef we're skipping
 
         while i < len(lines):
             line = lines[i]
@@ -51,6 +68,7 @@ class Preprocessor:
             line_num = i + 1
 
             if stripped.startswith("#"):
+                # Directive line
                 parts = stripped[1:].split(None, 2)
                 directive = parts[0].lower() if parts else ""
 
@@ -58,6 +76,7 @@ class Preprocessor:
                     if skip_depth == 0 and len(parts) >= 2:
                         name = parts[1]
                         raw_value = parts[2] if len(parts) >= 3 else ""
+                        # Strip trailing // comment from value
                         if "//" in raw_value:
                             raw_value = raw_value.split("//")[0]
                         value = raw_value.strip()
@@ -67,7 +86,7 @@ class Preprocessor:
                             )
                         else:
                             self._macros[name] = value
-                    output_lines.append("")
+                    output_lines.append("")  # Keep line count, replace directive with empty line
                 elif directive == "undef":
                     if skip_depth == 0 and len(parts) >= 2:
                         self._macros.pop(parts[1], None)
@@ -89,13 +108,14 @@ class Preprocessor:
                         skip_depth -= 1
                     output_lines.append("")
                 else:
-                    output_lines.append("")
+                    output_lines.append("")  # Unknown directive, keep line
                 i += 1
                 continue
 
             if skip_depth > 0:
-                output_lines.append("")
+                output_lines.append("")  # Skipped line, preserve line count
             else:
+                # Expand macros in this line (macros current at this point)
                 expanded = self._expand_macros_inner(line, set())
                 output_lines.append(expanded)
             i += 1
@@ -115,6 +135,7 @@ class Preprocessor:
         return all(_is_identifier_part(c) for c in name[1:])
 
     def _remove_comments(self, source: str) -> str:
+        """Remove // and /* */ comments. Preserve strings. Preserve line numbering."""
         result: list[str] = []
         i = 0
         n = len(source)
@@ -150,7 +171,9 @@ class Preprocessor:
                 i += 1
                 continue
 
+            # Single-line comment
             if c == "/" and i + 1 < n and source[i + 1] == "/":
+                # Skip until newline, replace with newline to preserve line count
                 j = i + 2
                 while j < n and source[j] not in ("\n", "\r"):
                     j += 1
@@ -163,21 +186,22 @@ class Preprocessor:
                 i = j
                 continue
 
+            # Multi-line comment
             if c == "/" and i + 1 < n and source[i + 1] == "*":
                 start_line = source[:i].count("\n") + 1
                 start_col = i - source[:i].rfind("\n") if "\n" in source[:i] else i + 1
-                result.append("  ")
+                result.append("  ")  # preserve column count for opening "/*"
                 j = i + 2
                 depth = 1
                 while j < n and depth > 0:
                     if j + 1 < n and source[j] == "/" and source[j + 1] == "*":
                         depth += 1
-                        result.append("  ")
+                        result.append("  ")  # preserve column count for "/*"
                         j += 2
                         continue
                     if j + 1 < n and source[j] == "*" and source[j + 1] == "/":
                         depth -= 1
-                        result.append("  ")
+                        result.append("  ")  # preserve column count for "*/"
                         j += 2
                         continue
                     if source[j] in ("\n", "\r"):
@@ -187,7 +211,7 @@ class Preprocessor:
                             result.append("\n")
                             j += 1
                     else:
-                        result.append(" ")
+                        result.append(" ")  # Replace comment chars with space
                         j += 1
                 if depth > 0:
                     self.errors.append(
@@ -201,13 +225,8 @@ class Preprocessor:
 
         return "".join(result)
 
-    def _expand_macros(self, source: str) -> str:
-        if not self._macros:
-            return source
-
-        return self._expand_macros_inner(source, set())
-
     def _expand_macros_inner(self, source: str, expansion_stack: set[str]) -> str:
+        """Inner macro expansion with recursion guard."""
         result: list[str] = []
         i = 0
         n = len(source)
@@ -240,6 +259,7 @@ class Preprocessor:
                 i += 1
                 continue
 
+            # Check for identifier (potential macro)
             if _is_identifier_start(c) or (c == "_" and i + 1 < n and _is_identifier_part(source[i + 1])):
                 start = i
                 while i < n and _is_identifier_part(source[i]):

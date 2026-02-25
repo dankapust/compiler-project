@@ -1,4 +1,4 @@
-## MiniCompiler Language Spec (Sprint 1) — Lexical Grammar
+## MiniCompiler Language Spec — Lexical Grammar
 
 ### Character Set / Encoding
 
