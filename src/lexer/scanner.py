@@ -135,8 +135,6 @@ class Scanner:
                     val = int(lex)
                 except ValueError:
                     return self._error_token(start_line, start_col, lex, "malformed integer literal")
-                if val < -(2**31) or val > (2**31 - 1):
-                    return self._error_token(start_line, start_col, lex, "integer literal out of 32-bit range")
                 return Token(TokenType.INT_LITERAL, lex, start_line, start_col, val)
             case '"':
                 s = []
