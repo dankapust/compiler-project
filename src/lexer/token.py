@@ -34,7 +34,6 @@ class TokenType(Enum):
     STAR = auto()
     SLASH = auto()
     PERCENT = auto()
-
     ARROW = auto()
 
     ASSIGN = auto()
@@ -75,8 +74,4 @@ class Token:
         base = f'{self.line}:{self.column} {self.type.name} "{self.lexeme}"'
         if self.literal is None:
             return base
-        if isinstance(self.literal, str):
-            return f"{base} {self.literal}"
         return f"{base} {self.literal}"
-
-

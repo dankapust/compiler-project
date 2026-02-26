@@ -1,52 +1,52 @@
-## MiniCompiler Language Spec (Sprint 1) — Lexical Grammar
+## Спецификация языка MiniCompiler — лексическая грамматика
 
-### Character Set / Encoding
+### Кодировка
 
-- Source files are interpreted as **UTF-8** text.
-- Lexer treats ASCII control characters only as whitespace/newlines where specified.
+- Исходные файлы интерпретируются как **UTF-8**.
 
-### Token Categories
+### Категории токенов
 
-- **Keywords**: reserved words listed below
-- **Identifiers**
-- **Literals**: integer, float, string, boolean
-- **Operators**
-- **Delimiters**
-- **End-of-file** marker
-- **Error** token (used for recovery; scanning continues)
+| Категория | Описание |
+|-----------|----------|
+| Ключевые слова | Зарезервированные слова языка |
+| Идентификаторы | Имена переменных, функций и т.д. |
+| Литералы | Целые числа, дробные, строки, булевы |
+| Операторы | Арифметические, логические, сравнения, присваивания |
+| Разделители | Скобки, запятая, точка с запятой |
+| Конец файла | Маркер `END_OF_FILE` |
+| Ошибка | Токен `ERROR` (сканирование продолжается) |
 
-### Keywords (LANG-2)
+### Ключевые слова (LANG-2)
 
-Reserved words:
+```
+if   else   while   for   int   float   bool
+return   true   false   void   struct   fn
+```
 
-`if`, `else`, `while`, `for`, `int`, `float`, `bool`, `return`, `true`, `false`, `void`, `struct`, `fn`
+`true` и `false` распознаются как **булевы литералы** с типизированным значением.
 
-Note: In the implementation, `true`/`false` are recognized as **boolean literals** with typed values.
+### Лексическая грамматика — EBNF (LANG-1)
 
-### Lexical Grammar (EBNF) (LANG-1)
-
-Whitespace and comments are skipped and not emitted as tokens.
-
-EBNF:
+Пробелы и комментарии пропускаются и не порождают токенов.
 
 ```ebnf
 letter      = "A"…"Z" | "a"…"z" ;
 digit       = "0"…"9" ;
 underscore  = "_" ;
 
-identifier  = letter, { letter | digit | underscore } ;
+identifier  = letter , { letter | digit | underscore } ;
 
-int_lit     = digit, { digit } ;
-float_lit   = digit, { digit }, ".", digit, { digit } ;
+int_lit     = digit , { digit } ;
+float_lit   = digit , { digit } , "." , digit , { digit } ;
 bool_lit    = "true" | "false" ;
-string_lit  = '"', { string_char }, '"' ;
-string_char = ? any char except '"' and newline ? | escape ;
-escape      = "\", ( "\" | "n" | "t" | "r" | '"' ) ;
+string_lit  = '"' , { string_char } , '"' ;
+string_char = ? любой символ кроме '"' и перевода строки ? | escape ;
+escape      = "\" , ( "\" | "n" | "t" | "r" | '"' ) ;
 
 keyword     = "if" | "else" | "while" | "for" | "int" | "float" | "bool"
             | "return" | "void" | "struct" | "fn" ;
 
-operator    = "+" | "-" | "*" | "/" | "%" 
+operator    = "+" | "-" | "*" | "/" | "%"
             | "==" | "!=" | "<" | "<=" | ">" | ">="
             | "=" | "+=" | "-=" | "*=" | "/=" | "%="
             | "&&" | "||"
@@ -55,44 +55,48 @@ operator    = "+" | "-" | "*" | "/" | "%"
 delimiter   = "(" | ")" | "{" | "}" | "[" | "]" | "," | ";" ;
 ```
 
-### Regular Expressions (LANG-1)
+### Регулярные выражения (LANG-1)
 
-- **Identifier**: `[A-Za-z][A-Za-z0-9_]{0,254}`
-- **Integer**: `[0-9]+` (range checked as 32-bit signed at lex time)
-- **Float**: `[0-9]+\.[0-9]+`
-- **String**: `"([^"\\\n\r]|\\.)*"` (escapes are limited in Sprint 1)
-- **Boolean**: `true|false`
+| Токен | Regex | Примечание |
+|-------|-------|------------|
+| Идентификатор | `[A-Za-z][A-Za-z0-9_]{0,254}` | Макс. 255 символов |
+| Целое число | `[0-9]+` | Диапазон проверяется: [-2^31, 2^31-1] |
+| Дробное число | `[0-9]+\.[0-9]+` | Точка обязательна между цифрами |
+| Строка | `"([^"\\\n\r]|\\.)*"` | Escape-последовательности: `\\`, `\"`, `\n`, `\t`, `\r` |
+| Булев | `true\|false` | Литерал с типизированным значением |
 
-### Identifiers (LANG-3)
+### Идентификаторы (LANG-3)
 
-- Start with letter `[a-zA-Z]`
-- Followed by letters, digits, or underscores
-- Max length: **255**
-- Case-sensitive
+- Начинаются с буквы `[a-zA-Z]`
+- Далее буквы, цифры или подчёркивания `[a-zA-Z0-9_]`
+- Максимальная длина: **255** символов
+- Регистрозависимые (`Foo` и `foo` — разные имена)
 
-### Literals (LANG-4)
+### Литералы (LANG-4)
 
-- **Integer**: decimal digits; checked to fit \( [-2^{31}, 2^{31}-1] \)
-- **Float**: decimal digits + dot + decimal digits
-- **String**: double-quoted; basic escapes supported
-- **Boolean**: `true` or `false`
+| Тип | Формат | Ограничения |
+|-----|--------|-------------|
+| Целое число | Десятичные цифры | Диапазон [-2^31, 2^31-1] |
+| Дробное число | Цифры `.` цифры | Обе части обязательны |
+| Строка | В двойных кавычках `"..."` | Escape: `\\` `\"` `\n` `\t` `\r` |
+| Булев | `true` или `false` | Типизированное значение |
 
-### Operators & Delimiters (LANG-5)
+### Операторы и разделители (LANG-5)
 
-- Arithmetic: `+ - * / %`
-- Relational: `== != < <= > >=`
-- Logical: `&&`
-- Logical OR: `||`
-- Unary NOT: `!`
-- Function return type arrow: `->`
-- Assignment (used by lexer tests): `= += -= *= /= %=`
-- Delimiters: `(` `)` `{` `}` `[` `]` `,` `;`
+| Группа | Символы |
+|--------|---------|
+| Арифметические | `+`  `-`  `*`  `/`  `%` |
+| Сравнения | `==`  `!=`  `<`  `<=`  `>`  `>=` |
+| Логические | `&&`  `\|\|`  `!` |
+| Присваивания | `=`  `+=`  `-=`  `*=`  `/=`  `%=` |
+| Стрелка | `->` |
+| Разделители | `(`  `)`  `{`  `}`  `[`  `]`  `,`  `;` |
 
-### Whitespace & Comments (LANG-6)
+### Пробелы и комментарии (LANG-6)
 
-- Whitespace: space, tab, newline (`\n`), carriage return (`\r`)
-- Newlines: both Unix (`\n`) and Windows (`\r\n`) are supported and counted as one line break.
-- Single-line comment: `//` until end-of-line
-- Multi-line comment: `/* ... */` (nesting supported in implementation)
-
-
+| Элемент | Описание |
+|---------|----------|
+| Пробельные символы | Пробел, табуляция, `\n`, `\r` |
+| Переводы строк | Unix `\n` и Windows `\r\n` считаются одним переводом |
+| Однострочный комментарий | `//` до конца строки |
+| Блочный комментарий | `/* ... */` (поддержка вложенных) |
