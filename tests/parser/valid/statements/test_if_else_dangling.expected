@@ -1,0 +1,30 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int x = 5 [2:5]
+        IfStmt [3:5]:
+          Condition: (x > 0)
+          Then:
+            Block [3:16]:
+              ExprStmt: (x = 1) [4:9]
+        IfStmt [6:5]:
+          Condition: (x == 1)
+          Then:
+            Block [6:17]:
+              ExprStmt: (x = 2) [7:9]
+          Else:
+            Block [8:12]:
+              ExprStmt: (x = 3) [9:9]
+        IfStmt [11:5]:
+          Condition: (x > 0)
+          Then:
+            IfStmt [12:9]:
+              Condition: (x > 1)
+              Then:
+                ExprStmt: (x = 10) [13:13]
+              Else:
+                ExprStmt: (x = 20) [15:13]
+ROUNDTRIP: OK

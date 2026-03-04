@@ -1,0 +1,21 @@
+AST:
+Program [1:1]:
+  FunctionDecl: empty -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:12]:
+  FunctionDecl: with_empty_if -> void [4:1]
+    Parameters: []
+    Body:
+      Block [4:20]:
+        IfStmt [5:5]:
+          Condition: true
+          Then:
+            Block [5:15]:
+        IfStmt [7:5]:
+          Condition: false
+          Then:
+            Block [7:16]:
+          Else:
+            Block [8:12]:
+ROUNDTRIP: OK

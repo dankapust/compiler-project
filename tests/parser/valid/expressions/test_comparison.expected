@@ -1,0 +1,13 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: bool a = (1 == 1) [2:5]
+        VarDeclStmt: bool b = (2 != 3) [3:5]
+        VarDeclStmt: bool c = (1 < 2) [4:5]
+        VarDeclStmt: bool d = (3 >= 2) [5:5]
+        VarDeclStmt: bool e = (4 <= 5) [6:5]
+        VarDeclStmt: bool f = (6 > 0) [7:5]
+ROUNDTRIP: OK

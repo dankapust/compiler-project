@@ -1,0 +1,63 @@
+Program        ::= { Declaration } ;
+
+Declaration    ::= FunctionDecl
+                 | StructDecl
+                 | VarDecl ;
+
+FunctionDecl   ::= "fn" IDENTIFIER "(" [ Parameters ] ")" [ "->" Type ] Block ;
+StructDecl     ::= "struct" IDENTIFIER "{" { VarDecl } "}" ;
+VarDecl        ::= Type IDENTIFIER [ "=" Expression ] ";" ;
+
+Statement      ::= Block
+                 | IfStmt
+                 | WhileStmt
+                 | ForStmt
+                 | ReturnStmt
+                 | ExprStmt
+                 | VarDecl
+                 | ";" ;
+
+Block          ::= "{" { Statement } "}" ;
+IfStmt         ::= "if" "(" Expression ")" Statement [ "else" Statement ] ;
+WhileStmt      ::= "while" "(" Expression ")" Statement ;
+ForStmt        ::= "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement ;
+ForInit        ::= VarDeclNoSemi | Expression ;
+VarDeclNoSemi  ::= Type IDENTIFIER [ "=" Expression ] ;
+ReturnStmt     ::= "return" [ Expression ] ";" ;
+ExprStmt       ::= Expression ";" ;
+
+Expression     ::= Assignment ;
+Assignment     ::= LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ] ;
+LogicalOr      ::= LogicalAnd { "||" LogicalAnd } ;
+LogicalAnd     ::= Equality { "&&" Equality } ;
+Equality       ::= Relational [ ( "==" | "!=" ) Relational ] ;
+Relational     ::= Additive [ ( "<" | "<=" | ">" | ">=" ) Additive ] ;
+Additive       ::= Multiplicative { ( "+" | "-" ) Multiplicative } ;
+Multiplicative ::= Unary { ( "*" | "/" | "%" ) Unary } ;
+Unary          ::= ( "-" | "!" ) Unary | Primary ;
+Primary        ::= Literal
+                 | IDENTIFIER [ "(" [ Arguments ] ")" ]
+                 | "(" Expression ")" ;
+Arguments      ::= Expression { "," Expression } ;
+
+Type           ::= "int" | "float" | "bool" | "void" | IDENTIFIER ;
+Parameters     ::= Parameter { "," Parameter } ;
+Parameter      ::= Type IDENTIFIER ;
+
+Literal        ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL | BOOL_LITERAL | "null" ;
+
+Precedence (highest to lowest):
+  1. Primary (literals, identifiers, parenthesized, call)
+  2. Unary (-, !)
+  3. Multiplicative (*, /, %)
+  4. Additive (+, -)
+  5. Relational (<, <=, >, >=)
+  6. Equality (==, !=)
+  7. Logical AND (&&)
+  8. Logical OR (||)
+  9. Assignment (=, +=, -=, *=, /=, %=)
+
+Associativity:
+  - Left-associative: + - * / % && ||
+  - Right-associative: = += -= *= /= %=
+  - Non-associative: == != < <= > >=

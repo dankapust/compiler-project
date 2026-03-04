@@ -12,5 +12,9 @@ build/
 tokens.txt
 *.tokens.actual
 *.tokens.diff
-
-
+*.expected.actual
+ast.json
+ast.dot
+ast.txt
+ast.png
+результаты.md

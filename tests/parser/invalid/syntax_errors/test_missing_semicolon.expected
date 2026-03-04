@@ -1,0 +1,9 @@
+ERROR 3:5 expected ';' after variable declaration (expected SEMICOLON) [Did you forget a semicolon?]
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        ReturnStmt [3:5]: x
+ROUNDTRIP: OK

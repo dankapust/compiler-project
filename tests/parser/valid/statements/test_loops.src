@@ -1,0 +1,12 @@
+fn main() {
+    int i = 0;
+    while (i < 10) {
+        i += 1;
+    }
+    for (int j = 0; j < 5; j += 1) {
+        i += j;
+    }
+    for (;;) {
+        return;
+    }
+}

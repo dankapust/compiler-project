@@ -6,13 +6,15 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Allow running tests without installing the package
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 
 from lexer.scanner import Scanner  # noqa: E402
 from lexer.token import TokenType  # noqa: E402
 from preprocessor.preprocessor import Preprocessor  # noqa: E402
+from parser.parser import Parser  # noqa: E402
+from parser.pretty import pretty_print  # noqa: E402
+from parser.codec import node_to_jsonable, from_jsonable  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,50 @@ def _tokenize_text(text: str, use_preprocessor: bool = True) -> str:
             break
     return "\n".join(out_lines) + "\n"
 
+
+def _tokens_from_source(text: str, use_preprocessor: bool = True) -> tuple[list, list, list]:
+    pp_errors: list = []
+    if use_preprocessor:
+        pp = Preprocessor(text)
+        text = pp.process()
+        pp_errors = pp.errors
+    sc = Scanner(text)
+    toks = []
+    while True:
+        t = sc.next_token()
+        toks.append(t)
+        if t.type == TokenType.END_OF_FILE:
+            break
+    return toks, sc.errors, pp_errors
+
+
+def _parse_text(text: str, use_preprocessor: bool = True) -> str:
+    toks, lex_errors, pp_errors = _tokens_from_source(text, use_preprocessor)
+    p = Parser(tokens=toks)
+    program = p.parse()
+
+    lines: list[str] = []
+    for e in pp_errors:
+        lines.append(f"ERROR {e.format()}")
+    for e in lex_errors:
+        lines.append(f"ERROR {e.format()}")
+    for e in p.errors:
+        lines.append(f"ERROR {e.format()}")
+    lines.append("AST:")
+    lines.append(pretty_print(program).rstrip("\n"))
+
+    try:
+        program2 = from_jsonable(node_to_jsonable(program))
+        if program2 != program:
+            lines.append("ERROR round-trip mismatch: AST != decode(encode(AST))")
+        else:
+            lines.append("ROUNDTRIP: OK")
+    except Exception as ex:
+        lines.append(f"ERROR round-trip failed: {ex}")
+
+    return "\n".join(lines) + "\n"
+
+
 def _run_case(src_path: Path, update: bool) -> CaseResult:
     expected_path = src_path.with_suffix(".tokens")
     actual = _tokenize_text(src_path.read_text(encoding="utf-8"))
@@ -55,37 +101,53 @@ def _run_case(src_path: Path, update: bool) -> CaseResult:
             tofile=str(src_path) + " (actual)",
         )
     )
-    # also write actual for convenience
     src_path.with_suffix(".tokens.actual").write_text(actual, encoding="utf-8")
     return CaseResult(name=str(src_path), ok=False, diff=diff)
 
+
+def _run_parser_case(src_path: Path, update: bool) -> CaseResult:
+    expected_path = src_path.with_suffix(".expected")
+    actual = _parse_text(src_path.read_text(encoding="utf-8"))
+
+    if update or not expected_path.exists():
+        expected_path.write_text(actual, encoding="utf-8")
+        return CaseResult(name=str(src_path), ok=True, diff=None)
+
+    expected = expected_path.read_text(encoding="utf-8")
+    if expected == actual:
+        return CaseResult(name=str(src_path), ok=True, diff=None)
+
+    diff = "".join(
+        difflib.unified_diff(
+            expected.splitlines(keepends=True),
+            actual.splitlines(keepends=True),
+            fromfile=str(expected_path),
+            tofile=str(src_path) + " (actual)",
+        )
+    )
+    src_path.with_suffix(".expected.actual").write_text(actual, encoding="utf-8")
+    return CaseResult(name=str(src_path), ok=False, diff=diff)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m tests.test_runner")
-    parser.add_argument(
-        "--update",
-        action="store_true",
-        help="Write/update all expected golden files from current output",
-    )
-    parser.add_argument(
-        "--only",
-        choices=["all", "lexer", "preprocessor"],
-        default="all",
-        help="Run only lexer tests, preprocessor tests, or all",
-    )
-    args = parser.parse_args(argv)
+    ap = argparse.ArgumentParser(prog="python -m tests.test_runner")
+    ap.add_argument("--update", action="store_true",
+                    help="Write/update all expected golden files from current output")
+    ap.add_argument("--only", choices=["all", "lexer", "parser", "preprocessor"], default="all",
+                    help="Run only specific test category")
+    args = ap.parse_args(argv)
 
     root = _ROOT
-    lexer_valid_dir = root / "tests" / "lexer" / "valid"
-    lexer_invalid_dir = root / "tests" / "lexer" / "invalid"
-
     results: list[CaseResult] = []
 
     if args.only in ("all", "lexer"):
-        lexer_cases = sorted(lexer_valid_dir.glob("*.src")) + sorted(lexer_invalid_dir.glob("*.src"))
-        if not lexer_cases:
+        lexer_valid = root / "tests" / "lexer" / "valid"
+        lexer_invalid = root / "tests" / "lexer" / "invalid"
+        cases = sorted(lexer_valid.glob("*.src")) + sorted(lexer_invalid.glob("*.src"))
+        if not cases:
             print("No lexer test cases found.", file=sys.stderr)
             return 2
-        for c in lexer_cases:
+        for c in cases:
             results.append(_run_case(c, update=args.update))
 
     if args.only in ("all", "preprocessor"):
@@ -111,6 +173,16 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 results.append(CaseResult(name="preprocessor unit tests", ok=True, diff=None))
 
+    if args.only in ("all", "parser"):
+        parser_valid = root / "tests" / "parser" / "valid"
+        parser_invalid = root / "tests" / "parser" / "invalid"
+        cases = sorted(parser_valid.rglob("*.src")) + sorted(parser_invalid.rglob("*.src"))
+        if not cases:
+            print("No parser test cases found.", file=sys.stderr)
+            return 2
+        for c in cases:
+            results.append(_run_parser_case(c, update=args.update))
+
     if not results:
         print("No test cases found.", file=sys.stderr)
         return 2
@@ -132,5 +204,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

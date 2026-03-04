@@ -1,0 +1,11 @@
+fn add(int a, int b) -> int {
+    return a + b;
+}
+
+fn greet() {
+    return;
+}
+
+fn identity(float x) -> float {
+    return x;
+}

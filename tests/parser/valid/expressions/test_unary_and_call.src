@@ -1,0 +1,10 @@
+fn negate(int x) -> int {
+    return -x;
+}
+
+fn main() {
+    int a = -42;
+    bool b = !true;
+    int c = negate(10);
+    int d = negate(1 + 2);
+}

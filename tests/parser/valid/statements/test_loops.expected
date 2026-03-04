@@ -1,0 +1,27 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int i = 0 [2:5]
+        WhileStmt [3:5]:
+          Condition: (i < 10)
+          Body:
+            Block [3:20]:
+              ExprStmt: (i += 1) [4:9]
+        ForStmt [6:5]:
+          Init: int j = 0
+          Condition: (j < 5)
+          Update: (j += 1)
+          Body:
+            Block [6:36]:
+              ExprStmt: (i += j) [7:9]
+        ForStmt [9:5]:
+          Init: <none>
+          Condition: <none>
+          Update: <none>
+          Body:
+            Block [9:14]:
+              ReturnStmt [10:9]: <none>
+ROUNDTRIP: OK

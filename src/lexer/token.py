@@ -6,11 +6,9 @@ from typing import Any, Optional
 
 
 class TokenType(Enum):
-    # Special
     END_OF_FILE = auto()
     ERROR = auto()
 
-    # Identifiers / literals
     IDENTIFIER = auto()
     INT_LITERAL = auto()
     FLOAT_LITERAL = auto()
@@ -18,7 +16,6 @@ class TokenType(Enum):
     BOOL_LITERAL = auto()
     NULL_LITERAL = auto()
 
-    # Keywords
     KW_IF = auto()
     KW_ELSE = auto()
     KW_WHILE = auto()
@@ -31,15 +28,13 @@ class TokenType(Enum):
     KW_STRUCT = auto()
     KW_FN = auto()
 
-    # Operators
     PLUS = auto()
     MINUS = auto()
     BANG = auto()
     STAR = auto()
     SLASH = auto()
     PERCENT = auto()
-
-    ARROW = auto()  # ->
+    ARROW = auto()
 
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
@@ -57,7 +52,6 @@ class TokenType(Enum):
     AND_AND = auto()
     OR_OR = auto()
 
-    # Delimiters
     LPAREN = auto()
     RPAREN = auto()
     LBRACE = auto()
@@ -72,18 +66,12 @@ class TokenType(Enum):
 class Token:
     type: TokenType
     lexeme: str
-    line: int  # 1-indexed
-    column: int  # 1-indexed
+    line: int
+    column: int
     literal: Optional[Any] = None
 
     def format(self) -> str:
-        # Required format:
-        # LINE:COLUMN TOKEN_TYPE "LEXEME" [LITERAL_VALUE]
         base = f'{self.line}:{self.column} {self.type.name} "{self.lexeme}"'
         if self.literal is None:
             return base
-        if isinstance(self.literal, str):
-            return f"{base} {self.literal}"
         return f"{base} {self.literal}"
-
-

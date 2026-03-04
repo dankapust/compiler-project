@@ -1,0 +1,18 @@
+AST:
+Program [1:1]:
+  FunctionDecl: add -> int [1:1]
+    Parameters: [int a, int b]
+    Body:
+      Block [1:29]:
+        ReturnStmt [2:5]: (a + b)
+  FunctionDecl: greet -> void [5:1]
+    Parameters: []
+    Body:
+      Block [5:12]:
+        ReturnStmt [6:5]: <none>
+  FunctionDecl: identity -> float [9:1]
+    Parameters: [float x]
+    Body:
+      Block [9:31]:
+        ReturnStmt [10:5]: x
+ROUNDTRIP: OK

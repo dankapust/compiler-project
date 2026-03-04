@@ -1,0 +1,8 @@
+fn main() {
+    bool a = 1 == 1;
+    bool b = 2 != 3;
+    bool c = 1 < 2;
+    bool d = 3 >= 2;
+    bool e = 4 <= 5;
+    bool f = 6 > 0;
+}

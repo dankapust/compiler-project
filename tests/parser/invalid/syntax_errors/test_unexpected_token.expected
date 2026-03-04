@@ -1,0 +1,9 @@
+ERROR 2:9 expected variable name (expected IDENTIFIER)
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        EmptyStmt [2:12]
+ROUNDTRIP: OK
