@@ -1,3 +1,1 @@
-# Golden test runner for lexer tests
-
-
+"""Golden test runner for lexer and parser tests."""

@@ -1,0 +1,9 @@
+ERROR 2:21 chained equality comparison is not allowed (non-associative)
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        EmptyStmt [2:25]
+ROUNDTRIP: OK

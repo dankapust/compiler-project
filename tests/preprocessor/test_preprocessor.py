@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Allow running without installing (project root/src)
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 
@@ -34,7 +33,6 @@ def test_comments_preserved_in_strings() -> None:
     """PRE-4: Comments inside strings preserved."""
     pp = Preprocessor('fn main() { string s = "hello // world"; }\n')
     result = pp.process()
-    # The string literal must still contain "//" - not treated as comment
     assert '// world' in result or '"hello' in result
     assert "hello" in result
 
@@ -59,9 +57,7 @@ def test_undefine_api() -> None:
     """PRE-3: undefine(name) programmatic API."""
     pp = Preprocessor("#define X 1\nint a = X;\n#undef X\nint b = X;\n")
     result = pp.process()
-    # Line 2: X expanded to 1
     assert "int a = 1" in result or "= 1" in result
-    # Line 4: X not in macros, stays as X
     assert "int b = X" in result or "b = X" in result
 
 

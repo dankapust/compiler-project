@@ -1,0 +1,10 @@
+fn empty() {
+}
+
+fn with_empty_if() {
+    if (true) {
+    }
+    if (false) {
+    } else {
+    }
+}

@@ -1,0 +1,244 @@
+Program        ::= { Declaration } ;
+
+Declaration    ::= FunctionDecl
+                 | StructDecl
+                 | Statement ;
+
+FunctionDecl   ::= "fn" IDENTIFIER "(" [ Parameters ] ")" [ "->" Type ] Block ;
+StructDecl     ::= "struct" IDENTIFIER "{" { VarDecl } "}" ;
+VarDecl        ::= Type IDENTIFIER [ "=" Expression ] ";" ;
+
+Statement      ::= Block
+                 | IfStmt
+                 | WhileStmt
+                 | ForStmt
+                 | ReturnStmt
+                 | ExprStmt
+                 | VarDecl
+                 | ";" ;
+
+Block          ::= "{" { Statement } "}" ;
+
+IfStmt         ::= "if" "(" Expression ")" Block [ "else" Block ] ;
+WhileStmt      ::= "while" "(" Expression ")" Statement ;
+ForStmt        ::= "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement ;
+ForInit        ::= VarDeclNoSemi | Expression ;
+VarDeclNoSemi  ::= Type IDENTIFIER [ "=" Expression ] ;
+ReturnStmt     ::= "return" [ Expression ] ";" ;
+ExprStmt       ::= Expression ";" ;
+
+Expression     ::= Assignment ;
+Assignment     ::= LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ] ;
+LogicalOr      ::= LogicalAnd { "||" LogicalAnd } ;
+LogicalAnd     ::= Equality { "&&" Equality } ;
+Equality       ::= Relational [ ( "==" | "!=" ) Relational ] ;
+Relational     ::= Additive [ ( "<" | "<=" | ">" | ">=" ) Additive ] ;
+Additive       ::= Multiplicative { ( "+" | "-" ) Multiplicative } ;
+Multiplicative ::= Unary { ( "*" | "/" | "%" ) Unary } ;
+
+Unary          ::= ( "++" | "--" | "-" | "!" ) Unary
+                 | Postfix [ ( "++" | "--" ) ] ;
+
+Postfix        ::= PrimaryBase { PostfixSuffix } ;
+PrimaryBase    ::= Literal
+                 | IDENTIFIER
+                 | "(" Expression ")" ;
+
+PostfixSuffix  ::= "(" [ Arguments ] ")"      // call
+                 | "[" Expression "]"          // index
+                 | "." IDENTIFIER ;            // member access
+
+Arguments      ::= Expression { "," Expression } ;
+
+Type           ::= "int" | "float" | "bool" | "void" | IDENTIFIER ;
+Parameters     ::= Parameter { "," Parameter } ;
+Parameter      ::= Type IDENTIFIER ;
+
+Literal        ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL | BOOL_LITERAL | "null" ;
+
+Precedence (highest to lowest):
+  1. PrimaryBase (literals, identifiers, parenthesized)
+  2. PostfixSuffix chain (calls, indexing, member access)
+  3. Postfix increments (x++, x--)
+  4. Unary (-, !, ++x, --x)
+  3. Multiplicative (*, /, %)
+  4. Additive (+, -)
+  5. Relational (<, <=, >, >=)
+  6. Equality (==, !=)
+  7. Logical AND (&&)
+  8. Logical OR (||)
+  9. Assignment (=, +=, -=, *=, /=, %=)
+
+Associativity:
+  - Left-associative: + - * / % && ||
+  - Right-associative: = += -= *= /= %=
+  - Non-associative: == != < <= > >=
+
+LL(1) note:
+  - If/else: branches are Blocks (`{...}`), so there is no dangling-else ambiguity.
+  - Types: `Type` may start with IDENTIFIER (user-defined struct names), which conflicts with expression
+    statements that also start with IDENTIFIER. To keep statement parsing LL(1), an IDENTIFIER is treated
+    as a type-start only if it is a "known type" (a struct name).
+  - Forward types (`T x;` before `struct T {...}`): to support this while keeping LL(1) decisions,
+    use 2 passes:
+      (1) scan tokens and collect all `struct` names into KnownTypes
+      (2) parse with the refined token-class TYPE_ID vs IDENTIFIER.
+
+LValue note (for assignments and ++/--):
+  Grammar describes expression forms. Valid increment/decrement/assignment targets are checked separately:
+  - Allowed lvalues: IDENTIFIER, indexing (`x[i]`), member access (`x.field`), and parenthesized lvalues.
+  - Disallowed lvalues: any expression that contains a call suffix `(...)` in its postfix chain (e.g. `f().x`).
+
+--------------------------------------------------------------------------------
+BNF (expanded; no EBNF sugar) for FIRST/FOLLOW and LL(1) table construction
+--------------------------------------------------------------------------------
+
+Conventions:
+  - EPS denotes epsilon (empty string)
+  - $ denotes end of input
+  - IDENT means "identifier token"
+  - TYPE_ID means an identifier that is known to be a type name (collected in a pre-pass)
+  - Built-in type keywords: KW_INT, KW_FLOAT, KW_BOOL, KW_VOID
+  - If/else branches are Blocks to avoid dangling-else LL(1) ambiguity.
+
+Program        -> DeclList $
+DeclList       -> Declaration DeclList
+DeclList       -> EPS
+
+Declaration    -> FunctionDecl
+Declaration    -> StructDecl
+Declaration    -> Statement
+
+FunctionDecl   -> KW_FN IDENT LPAREN ParamListOpt RPAREN RetTypeOpt Block
+RetTypeOpt     -> ARROW Type
+RetTypeOpt     -> EPS
+
+StructDecl     -> KW_STRUCT IDENT LBRACE VarDeclList RBRACE
+VarDeclList    -> VarDecl VarDeclList
+VarDeclList    -> EPS
+VarDecl        -> Type IDENT VarInitOpt SEMI
+VarInitOpt     -> ASSIGN Expression
+VarInitOpt     -> EPS
+
+Statement      -> Block
+Statement      -> IfStmt
+Statement      -> WhileStmt
+Statement      -> ForStmt
+Statement      -> ReturnStmt
+Statement      -> ExprStmt
+Statement      -> VarDecl
+Statement      -> SEMI
+
+Block          -> LBRACE StmtList RBRACE
+StmtList       -> Statement StmtList
+StmtList       -> EPS
+
+IfStmt         -> KW_IF LPAREN Expression RPAREN Block ElseOpt
+ElseOpt        -> KW_ELSE Block
+ElseOpt        -> EPS
+
+WhileStmt      -> KW_WHILE LPAREN Expression RPAREN Statement
+ForStmt        -> KW_FOR LPAREN ForInitOpt SEMI ExprOpt SEMI ExprOpt RPAREN Statement
+ForInitOpt     -> VarDeclNoSemi
+ForInitOpt     -> Expression
+ForInitOpt     -> EPS
+VarDeclNoSemi  -> Type IDENT VarInitOpt
+
+ReturnStmt     -> KW_RETURN ExprOpt SEMI
+ExprStmt       -> Expression SEMI
+ExprOpt        -> Expression
+ExprOpt        -> EPS
+
+Type           -> BuiltinType
+Type           -> TYPE_ID
+BuiltinType    -> KW_INT
+BuiltinType    -> KW_FLOAT
+BuiltinType    -> KW_BOOL
+BuiltinType    -> KW_VOID
+
+ParamListOpt   -> ParamList
+ParamListOpt   -> EPS
+ParamList      -> Param ParamListTail
+ParamListTail  -> COMMA Param ParamListTail
+ParamListTail  -> EPS
+Param          -> Type IDENT
+
+Expression     -> Assignment
+Assignment     -> LogicalOr AssignTail
+AssignTail     -> AssignOp Assignment
+AssignTail     -> EPS
+AssignOp       -> ASSIGN
+AssignOp       -> PLUS_ASSIGN
+AssignOp       -> MINUS_ASSIGN
+AssignOp       -> STAR_ASSIGN
+AssignOp       -> SLASH_ASSIGN
+AssignOp       -> PERCENT_ASSIGN
+
+LogicalOr      -> LogicalAnd LogicalOrTail
+LogicalOrTail  -> OR_OR LogicalAnd LogicalOrTail
+LogicalOrTail  -> EPS
+
+LogicalAnd     -> Equality LogicalAndTail
+LogicalAndTail -> AND_AND Equality LogicalAndTail
+LogicalAndTail -> EPS
+
+Equality       -> Relational EqualityTail
+EqualityTail   -> EQEQ Relational
+EqualityTail   -> BANGEQ Relational
+EqualityTail   -> EPS
+
+Relational     -> Additive RelTail
+RelTail        -> LT Additive
+RelTail        -> LTE Additive
+RelTail        -> GT Additive
+RelTail        -> GTE Additive
+RelTail        -> EPS
+
+Additive       -> Multiplicative AddTail
+AddTail        -> PLUS Multiplicative AddTail
+AddTail        -> MINUS Multiplicative AddTail
+AddTail        -> EPS
+
+Multiplicative -> Unary MulTail
+MulTail        -> STAR Unary MulTail
+MulTail        -> SLASH Unary MulTail
+MulTail        -> PERCENT Unary MulTail
+MulTail        -> EPS
+
+Unary          -> PLUSPLUS Unary
+Unary          -> MINUSMINUS Unary
+Unary          -> MINUS Unary
+Unary          -> BANG Unary
+Unary          -> Postfix PostIncOpt
+
+PostIncOpt     -> PLUSPLUS
+PostIncOpt     -> MINUSMINUS
+PostIncOpt     -> EPS
+
+Postfix        -> PrimaryBase PostfixTail
+PostfixTail    -> PostfixSuffix PostfixTail
+PostfixTail    -> EPS
+
+PostfixSuffix  -> CallSuffix
+PostfixSuffix  -> IndexSuffix
+PostfixSuffix  -> MemberSuffix
+
+CallSuffix     -> LPAREN ArgListOpt RPAREN
+ArgListOpt     -> ArgList
+ArgListOpt     -> EPS
+ArgList        -> Expression ArgListTail
+ArgListTail    -> COMMA Expression ArgListTail
+ArgListTail    -> EPS
+
+IndexSuffix    -> LBRACKET Expression RBRACKET
+MemberSuffix   -> DOT IDENT
+
+PrimaryBase    -> Literal
+PrimaryBase    -> IDENT
+PrimaryBase    -> LPAREN Expression RPAREN
+
+Literal        -> INT_LIT
+Literal        -> FLOAT_LIT
+Literal        -> STRING_LIT
+Literal        -> BOOL_LIT
+Literal        -> NULL_LIT

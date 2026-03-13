@@ -30,6 +30,8 @@ class TokenType(Enum):
 
     PLUS = auto()
     MINUS = auto()
+    PLUS_PLUS = auto()
+    MINUS_MINUS = auto()
     BANG = auto()
     STAR = auto()
     SLASH = auto()

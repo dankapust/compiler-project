@@ -1,0 +1,13 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int x = 0 [2:5]
+        ExprStmt: (x++) [3:5]
+        ExprStmt: (++x) [4:5]
+        ExprStmt: (x--) [5:5]
+        ExprStmt: (--x) [6:5]
+        VarDeclStmt: int y = ((x++) + (++x)) [7:5]
+ROUNDTRIP: OK

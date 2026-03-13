@@ -1,0 +1,12 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int a = (1 + (2 * 3)) [2:5]
+        VarDeclStmt: int b = ((4 / 2) - 1) [3:5]
+        VarDeclStmt: int c = ((1 + 2) + 3) [4:5]
+        VarDeclStmt: bool d = ((1 < 2) && (3 > 1)) [5:5]
+        VarDeclStmt: bool e = (true || (false && true)) [6:5]
+ROUNDTRIP: OK

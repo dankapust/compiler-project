@@ -1,0 +1,9 @@
+ERROR 2:5 invalid assignment target
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        EmptyStmt [2:14]
+ROUNDTRIP: OK

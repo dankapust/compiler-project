@@ -1,0 +1,16 @@
+AST:
+Program [1:1]:
+  StructDecl: Point [1:1]
+    VarDeclStmt: int x [2:5]
+    VarDeclStmt: int y [3:5]
+  StructDecl: Color [6:1]
+    VarDeclStmt: float r [7:5]
+    VarDeclStmt: float g [8:5]
+    VarDeclStmt: float b [9:5]
+    VarDeclStmt: float a [10:5]
+  FunctionDecl: main -> void [13:1]
+    Parameters: []
+    Body:
+      Block [13:11]:
+        VarDeclStmt: int z = 0 [14:5]
+ROUNDTRIP: OK

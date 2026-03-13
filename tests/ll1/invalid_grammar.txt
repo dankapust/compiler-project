@@ -1,0 +1,4 @@
+BNF (expanded; no EBNF sugar) for FIRST/FOLLOW and LL(1) table construction
+
+S -> a
+

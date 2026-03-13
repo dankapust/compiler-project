@@ -1,0 +1,21 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        ForStmt [2:5]:
+          Init: int i = 0
+          Condition: (i < 10)
+          Update: (i += 1)
+          Body:
+            Block [2:37]:
+              VarDeclStmt: int x = (i * 2) [3:9]
+        VarDeclStmt: int sum = 0 [5:5]
+        ForStmt [6:5]:
+          Init: (sum = 0)
+          Condition: (sum < 100)
+          Update: (sum += 10)
+          Body:
+            Block [6:41]:
+ROUNDTRIP: OK

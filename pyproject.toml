@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mini-compiler"
 version = "0.1.0"
-description = "MiniCompiler (Sprint 1): lexical analysis (tokenization) for a simplified C-like language."
+description = "MiniCompiler: lexical analysis, parsing, and AST construction for a simplified C-like language."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

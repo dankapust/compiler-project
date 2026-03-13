@@ -1,0 +1,7 @@
+fn main() {
+    int a = 1 + 2 * 3;
+    int b = 4 / 2 - 1;
+    int c = 1 + 2 + 3;
+    bool d = 1 < 2 && 3 > 1;
+    bool e = true || false && true;
+}

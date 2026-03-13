@@ -1,0 +1,14 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int x = 10 [2:5]
+        ExprStmt: (x = 20) [3:5]
+        ExprStmt: (x += 5) [4:5]
+        ExprStmt: (x -= 3) [5:5]
+        ExprStmt: (x *= 2) [6:5]
+        ExprStmt: (x /= 4) [7:5]
+        ExprStmt: (x %= 3) [8:5]
+ROUNDTRIP: OK

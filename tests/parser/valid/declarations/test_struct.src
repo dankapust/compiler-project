@@ -1,0 +1,15 @@
+struct Point {
+    int x;
+    int y;
+}
+
+struct Color {
+    float r;
+    float g;
+    float b;
+    float a;
+}
+
+fn main() {
+    int z = 0;
+}

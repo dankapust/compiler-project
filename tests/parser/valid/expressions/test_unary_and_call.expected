@@ -1,0 +1,16 @@
+AST:
+Program [1:1]:
+  FunctionDecl: negate -> int [1:1]
+    Parameters: [int x]
+    Body:
+      Block [1:25]:
+        ReturnStmt [2:5]: (-x)
+  FunctionDecl: main -> void [5:1]
+    Parameters: []
+    Body:
+      Block [5:11]:
+        VarDeclStmt: int a = (-42) [6:5]
+        VarDeclStmt: bool b = (!true) [7:5]
+        VarDeclStmt: int c = negate(10) [8:5]
+        VarDeclStmt: int d = negate((1 + 2)) [9:5]
+ROUNDTRIP: OK
