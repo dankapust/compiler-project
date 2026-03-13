@@ -28,9 +28,7 @@
 
 Программа состоит из последовательности объявлений верхнего уровня.
 
-```ebnf
 Program = { Declaration } EOF ;
-```
 
 ### Препроцессор
 
@@ -45,7 +43,6 @@ Program = { Declaration } EOF ;
 
 ### Объявления
 
-```ebnf
 Declaration = FunctionDecl | StructDecl | Statement ;
 
 FunctionDecl = "fn" Identifier "(" [ Parameters ] ")" [ "->" Type ] Block ;
@@ -55,19 +52,15 @@ Parameter    = Type Identifier ;
 StructDecl   = "struct" Identifier "{" { VarDecl } "}" ;
 
 VarDecl      = Type Identifier [ "=" Expression ] ";" ;
-```
 
 ### Типы
 
-```ebnf
 Type = "int" | "float" | "bool" | "void" | Identifier ;
-```
 
 Замечание: `Identifier` в позиции типа используется для пользовательских типов (имён `struct`).
 
 ### Инструкции
 
-```ebnf
 Statement  = Block | IfStmt | WhileStmt | ForStmt | ReturnStmt | ExprStmt | VarDecl | ";" ;
 Block      = "{" { Statement } "}" ;
 
@@ -80,7 +73,6 @@ VarDeclNoSemi = Type Identifier [ "=" Expression ] ;
 
 ReturnStmt = "return" [ Expression ] ";" ;
 ExprStmt   = Expression ";" ;
-```
 
 Решение “висячего else”: `else` привязывается к ближайшему (вложенному) `if`, у которого нет `else`.
 
@@ -88,7 +80,6 @@ ExprStmt   = Expression ";" ;
 
 Грамматика выражений задаётся по уровням приоритета (от низшего к высшему).
 
-```ebnf
 Expression     = Assignment ;
 Assignment     = LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ] ;
 
@@ -113,7 +104,6 @@ PostfixSuffix  = "(" [ Arguments ] ")"
 Arguments      = Expression { "," Expression } ;
 
 Literal        = IntLiteral | FloatLiteral | StringLiteral | BoolLiteral | "null" ;
-```
 
 ### Приоритет операторов
 
@@ -160,16 +150,13 @@ Literal        = IntLiteral | FloatLiteral | StringLiteral | BoolLiteral | "null
 
 ### Примеры
 
-```c
 fn main() {
     int x = 5;
     x++;
     ++x;
     int y = x++ + ++x;
 }
-```
 
-```c
 struct Point {
     int x;
     int y;
@@ -179,5 +166,4 @@ fn main() {
     Point p;
     int a = p.x + p.y;
 }
-```
 

@@ -1,10 +1,8 @@
 // Грамматика языка MiniCompiler
 
-// === Основные компоненты ===
 Program         = { Declaration } EOF;
 Declaration     = FunctionDecl | StructDecl | Statement;
 
-// === Объявления ===
 FunctionDecl    = "fn" Identifier "(" [ Parameters ] ")" [ "->" Type ] Block;
 Parameters      = Parameter { "," Parameter };
 Parameter       = Type Identifier;
@@ -13,10 +11,8 @@ StructDecl      = "struct" Identifier "{" { VarDecl } "}";
 
 VarDecl         = Type Identifier [ "=" Expression ] ";";
 
-// === Типы ===
 Type            = "int" | "float" | "bool" | "void" | Identifier;
 
-// === Блоки и инструкции ===
 Statement       = Block
                 | IfStmt
                 | WhileStmt
@@ -38,7 +34,6 @@ VarDeclNoSemi   = Type Identifier [ "=" Expression ];
 ReturnStmt      = "return" [ Expression ] ";";
 ExprStmt        = Expression ";";
 
-// === Выражения с приоритетами (от низшего к высшему) ===
 Expression      = Assignment;
 
 Assignment      = LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ];
@@ -62,11 +57,11 @@ Arguments       = Expression { "," Expression };
 
 Literal         = IntLiteral | FloatLiteral | StringLiteral | BoolLiteral | "null";
 
-// === Приоритет операторов (высокий -> низкий) ===
+// Приоритет операторов (высокий -> низкий)
 // 1. PrimaryBase
-// 2. PostfixSuffix chain: () [] .
-// 3. Postfix ++/--
-// 4. Unary: -, !, ++x, --x
+// 2. Цепочка PostfixSuffix: () [] .
+// 3. Постфиксные ++/--
+// 4. Унарные: -, !, ++x, --x
 // 5. * / %
 // 6. + -
 // 7. < <= > >=   (неассоциативные)
@@ -75,23 +70,23 @@ Literal         = IntLiteral | FloatLiteral | StringLiteral | BoolLiteral | "nul
 // 10. ||
 // 11. Assignment (=, +=, -=, *=, /=, %=)
 
-// === LL(1) замечания ===
-// - Viсячий else: "else" привязывается к ближайшему (вложенному) "if", у которого нет "else".
-// - Types vs statements: Identifier считается началом типа только если это известный тип (struct name).
-// - Forward types: поддерживаются через 2 прохода (сбор KnownTypes -> парсинг с TYPE_ID).
+// LL(1) замечания
+// - Висячий else: "else" привязывается к ближайшему (вложенному) "if", у которого нет "else".
+// - Типы vs инструкции: Identifier считается началом типа только если это известный тип (имя struct).
+// - Forward-типы: поддерживаются через 2 прохода (сбор KnownTypes -> парсинг с TYPE_ID).
 // - LValue (для присваивания и ++/--): проверяется отдельно (Identifier / x[i] / x.field / (lvalue)).
 
 --------------------------------------------------------------------------------
 BNF (expanded; no EBNF sugar) for FIRST/FOLLOW and LL(1) table construction
 --------------------------------------------------------------------------------
 
-Conventions:
-  - EPS denotes epsilon (empty string)
-  - $ denotes end of input
-  - IDENT means "identifier token"
-  - TYPE_ID means an identifier that is known to be a type name (collected in a pre-pass)
-  - Built-in type keywords: KW_INT, KW_FLOAT, KW_BOOL, KW_VOID
-  - Dangling else is resolved by attaching "else" to the nearest unmatched "if" (implementation rule).
+Соглашения:
+  - EPS обозначает эпсилон (пустую строку)
+  - $ обозначает конец ввода
+  - IDENT означает токен "идентификатор"
+  - TYPE_ID означает идентификатор, являющийся именем типа (собирается на предварительном проходе)
+  - Встроенные ключевые слова типов: KW_INT, KW_FLOAT, KW_BOOL, KW_VOID
+  - Висячий else решается привязкой "else" к ближайшему непарному "if" (правило реализации).
 
 Program        = DeclList $;
 DeclList       = Declaration DeclList | EPS;
