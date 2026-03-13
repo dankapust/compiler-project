@@ -3,6 +3,7 @@ from __future__ import annotations
 from lexer.token import Token, TokenType
 from parser.ast import (
     ASTNode, ProgramNode,
+
     LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     FunctionDecl, StructDecl, Param,
@@ -37,6 +38,7 @@ class Parser:
         self._just_synced = False
         self._known_types: set[str] = {"int", "float", "bool", "void"}
 
+
     def parse(self) -> ProgramNode:
         decls: list[ASTNode] = []
         while not self._is_at_end():
@@ -47,6 +49,11 @@ class Parser:
         line = tok.line if tok else 1
         col = tok.column if tok else 1
         return ProgramNode(line, col, tuple(decls))
+
+
+    # ------------------------------------------------------------------
+    # Declarations
+    # ------------------------------------------------------------------
 
     def _declaration(self) -> ASTNode | None:
         try:
@@ -131,9 +138,20 @@ class Parser:
     def _is_type_start(self) -> bool:
         if self._peek().type in _TYPE_KEYWORDS:
             return True
+
         if self._peek().type == TokenType.IDENTIFIER and self._peek().lexeme in self._known_types:
             return True
         return False
+
+        if self._peek().type == TokenType.IDENTIFIER:
+            pos = self._pos
+            if pos + 1 < len(self._tokens) and self._tokens[pos + 1].type == TokenType.IDENTIFIER:
+                return True
+        return False
+
+    # ------------------------------------------------------------------
+    # Statements
+    # ------------------------------------------------------------------
 
     def _statement(self) -> ASTNode:
         if self._check(TokenType.LBRACE):
@@ -224,6 +242,9 @@ class Parser:
                       suggestion="Did you forget a semicolon?")
         return ExprStmt(expr.line, expr.column, expr)
 
+    # ------------------------------------------------------------------
+    # Expressions (precedence climbing)
+    # ------------------------------------------------------------------
     def _expression(self) -> ASTNode:
         return self._assignment()
 
@@ -291,6 +312,7 @@ class Parser:
         return left
 
     def _unary(self) -> ASTNode:
+
         if self._peek().type in (TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
             op_tok = self._advance()
             operand = self._unary()
@@ -298,10 +320,12 @@ class Parser:
                 return IncDecExpr(op_tok.line, op_tok.column, operand.name, op_tok.lexeme, True)
             self._error_at(op_tok.line, op_tok.column, "invalid increment/decrement target")
             return operand
+
         if self._peek().type in (TokenType.MINUS, TokenType.BANG):
             op_tok = self._advance()
             operand = self._unary()
             return UnaryExpr(op_tok.line, op_tok.column, op_tok.lexeme, operand)
+
         return self._postfix()
 
     def _postfix(self) -> ASTNode:
@@ -312,6 +336,9 @@ class Parser:
                 return IncDecExpr(expr.line, expr.column, expr.name, op_tok.lexeme, False)
             self._error_at(op_tok.line, op_tok.column, "invalid increment/decrement target")
         return expr
+
+        return self._primary()
+
 
     def _primary(self) -> ASTNode:
         tok = self._peek()
@@ -356,6 +383,12 @@ class Parser:
             args.append(self._expression())
         return args
 
+
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
     def _peek(self) -> Token:
         return self._tokens[self._pos]
 
@@ -387,6 +420,11 @@ class Parser:
             return self._advance()
         self._error(f"{message} (expected {tt.name})", suggestion=suggestion)
         return self._peek()
+
+
+    # ------------------------------------------------------------------
+    # Error handling & recovery
+    # ------------------------------------------------------------------
 
     def _error(self, message: str, suggestion: str | None = None) -> None:
         tok = self._peek()

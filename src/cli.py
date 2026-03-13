@@ -13,7 +13,9 @@ from parser.parser import Parser
 from parser.pretty import pretty_print
 from parser.dot import to_dot
 from parser.codec import node_to_jsonable
+
 from parser.ll1_tables import compute_all, table_to_markdown, conflicts_to_dot
+
 
 
 def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
@@ -120,13 +122,17 @@ def _cmd_parse(args: argparse.Namespace) -> int:
 
     if args.output:
         try:
+
             out_path = Path(args.output)
             out_path.write_text(out_text, encoding="utf-8")
+            Path(args.output).write_text(out_text, encoding="utf-8")
+
         except OSError as e:
             print(f"error: cannot write output file: {e}", file=sys.stderr)
             return 2
     else:
         sys.stdout.write(out_text)
+
 
     if args.render_png:
         if args.ast_format != "dot":

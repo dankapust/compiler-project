@@ -13,6 +13,11 @@ class ASTNode:
         raise NotImplementedError
 
 
+
+# ---------------------------------------------------------------------------
+# Program
+# ---------------------------------------------------------------------------
+
 @dataclass(frozen=True)
 class ProgramNode(ASTNode):
     declarations: tuple[ASTNode, ...] = ()
@@ -21,10 +26,20 @@ class ProgramNode(ASTNode):
         return visitor.visit_program(self)
 
 
+
 @dataclass(frozen=True)
 class LiteralExpr(ASTNode):
     value: Any
     type_tag: str
+# ---------------------------------------------------------------------------
+# Expressions
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class LiteralExpr(ASTNode):
+    value: Any
+    type_tag: str  # "int", "float", "string", "bool", "null"
+
 
     def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_literal(self)
@@ -75,7 +90,6 @@ class AssignmentExpr(ASTNode):
     def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_assignment(self)
 
-
 @dataclass(frozen=True)
 class IncDecExpr(ASTNode):
     target: str
@@ -85,6 +99,9 @@ class IncDecExpr(ASTNode):
     def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_incdec(self)
 
+# ---------------------------------------------------------------------------
+# Statements
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class BlockStmt(ASTNode):
@@ -156,6 +173,10 @@ class EmptyStmt(ASTNode):
         return visitor.visit_empty_stmt(self)
 
 
+# ---------------------------------------------------------------------------
+# Declarations
+# ---------------------------------------------------------------------------
+
 @dataclass(frozen=True)
 class Param(ASTNode):
     param_type: str
@@ -184,6 +205,10 @@ class StructDecl(ASTNode):
     def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_struct_decl(self)
 
+
+# ---------------------------------------------------------------------------
+# Visitor
+# ---------------------------------------------------------------------------
 
 class ASTVisitor:
     def visit_program(self, node: ProgramNode) -> Any: ...
