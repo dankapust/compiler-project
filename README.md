@@ -44,6 +44,8 @@ compiler-project/
 
 Лексическая грамматика: `docs/language_spec.md`
 
+Синтаксическая грамматика (с примерами и LL(1) заметками): `docs/grammar.md`
+
 Формальная грамматика (EBNF): `src/parser/grammar.txt`
 
 ### Build / Install

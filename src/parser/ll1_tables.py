@@ -67,18 +67,35 @@ def _parse_bnf_section(text: str) -> Grammar:
             continue
         if line.startswith("- "):
             continue
-        if "->" not in line:
+        if "//" in line:
+            line = line.split("//", 1)[0].strip()
+            if not line:
+                continue
+        op = None
+        if "->" in line:
+            op = "->"
+        elif "=" in line:
+            op = "="
+        else:
             continue
 
-        lhs, rhs = (part.strip() for part in line.split("->", 1))
+        lhs, rhs = (part.strip() for part in line.split(op, 1))
         if not lhs:
             continue
+        if rhs.endswith(";"):
+            rhs = rhs[:-1].strip()
+        if not rhs:
+            continue
 
-        if rhs == EPS:
-            symbols = [EPS]
-        else:
-            symbols = [END if s == "$" else s for s in rhs.split()]
-        productions.setdefault(lhs, []).append(symbols)
+        alts = [alt.strip() for alt in rhs.split("|")]
+        for alt in alts:
+            if not alt:
+                continue
+            if alt == EPS:
+                symbols = [EPS]
+            else:
+                symbols = [END if s == "$" else s for s in alt.split()]
+            productions.setdefault(lhs, []).append(symbols)
 
     if not productions:
         raise ValueError("BNF section not found or empty")
