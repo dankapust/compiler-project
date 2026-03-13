@@ -74,7 +74,6 @@ compiler parse --input examples/hello.src --ast-format dot --output ast.dot
 dot -Tpng ast.dot -o ast.png
 ```
 
-
 Можно сразу получить PNG (если установлен Graphviz и доступна команда `dot`):
 ```bash
 compiler parse --input examples/hello.src --ast-format dot --output ast.dot --render-png

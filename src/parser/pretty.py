@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
-
     LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
@@ -177,7 +176,6 @@ def _expr_str(node: ASTNode) -> str:
             return f"{node.callee}({args})"
         case AssignmentExpr():
             return f"({node.target} {node.operator} {_expr_str(node.value)})"
-
         case IncDecExpr():
             if node.prefix:
                 return f"({node.operator}{node.target})"

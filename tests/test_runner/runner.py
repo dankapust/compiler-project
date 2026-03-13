@@ -15,7 +15,6 @@ from preprocessor.preprocessor import Preprocessor  # noqa: E402
 from parser.parser import Parser  # noqa: E402
 from parser.pretty import pretty_print  # noqa: E402
 from parser.codec import node_to_jsonable, from_jsonable  # noqa: E402
-
 from parser.ll1_tables import compute_all, table_to_markdown  # noqa: E402
 
 
@@ -229,7 +228,6 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         for c in cases:
             results.append(_run_parser_case(c, update=args.update))
-
 
     if args.only in ("all", "ll1"):
         ll1_dir = root / "tests" / "ll1"

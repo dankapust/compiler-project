@@ -3,7 +3,6 @@ Program        ::= { Declaration } ;
 Declaration    ::= FunctionDecl
                  | StructDecl
                  | Statement ;
-                 | VarDecl ;
 
 FunctionDecl   ::= "fn" IDENTIFIER "(" [ Parameters ] ")" [ "->" Type ] Block ;
 StructDecl     ::= "struct" IDENTIFIER "{" { VarDecl } "}" ;
@@ -20,9 +19,7 @@ Statement      ::= Block
 
 Block          ::= "{" { Statement } "}" ;
 
-
 IfStmt         ::= "if" "(" Expression ")" Block [ "else" Block ] ;
-IfStmt         ::= "if" "(" Expression ")" Statement [ "else" Statement ] ;
 WhileStmt      ::= "while" "(" Expression ")" Statement ;
 ForStmt        ::= "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement ;
 ForInit        ::= VarDeclNoSemi | Expression ;
@@ -39,7 +36,6 @@ Relational     ::= Additive [ ( "<" | "<=" | ">" | ">=" ) Additive ] ;
 Additive       ::= Multiplicative { ( "+" | "-" ) Multiplicative } ;
 Multiplicative ::= Unary { ( "*" | "/" | "%" ) Unary } ;
 
-
 Unary          ::= ( "++" | "--" | "-" | "!" ) Unary
                  | Postfix [ ( "++" | "--" ) ] ;
 
@@ -52,11 +48,6 @@ PostfixSuffix  ::= "(" [ Arguments ] ")"      // call
                  | "[" Expression "]"          // index
                  | "." IDENTIFIER ;            // member access
 
-Unary          ::= ( "-" | "!" ) Unary | Primary ;
-Primary        ::= Literal
-                 | IDENTIFIER [ "(" [ Arguments ] ")" ]
-                 | "(" Expression ")" ;
-
 Arguments      ::= Expression { "," Expression } ;
 
 Type           ::= "int" | "float" | "bool" | "void" | IDENTIFIER ;
@@ -66,13 +57,10 @@ Parameter      ::= Type IDENTIFIER ;
 Literal        ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL | BOOL_LITERAL | "null" ;
 
 Precedence (highest to lowest):
-
   1. PrimaryBase (literals, identifiers, parenthesized)
   2. PostfixSuffix chain (calls, indexing, member access)
   3. Postfix increments (x++, x--)
   4. Unary (-, !, ++x, --x)
-  1. Primary (literals, identifiers, parenthesized, call)
-  2. Unary (-, !)
   3. Multiplicative (*, /, %)
   4. Additive (+, -)
   5. Relational (<, <=, >, >=)
