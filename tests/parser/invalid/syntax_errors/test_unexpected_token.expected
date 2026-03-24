@@ -1,4 +1,4 @@
-ERROR 2:9 expected variable name (expected IDENTIFIER)
+ОШИБКА 2:9 ожидалось имя переменной (ожидалось: IDENTIFIER)
 AST:
 Program [1:1]:
   FunctionDecl: main -> void [1:1]
@@ -6,4 +6,4 @@ Program [1:1]:
     Body:
       Block [1:11]:
         EmptyStmt [2:12]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

@@ -1,7 +1,7 @@
 from parser.parser import Parser
 from parser.ast import (
     ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr,
+    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
     ASTVisitor,
@@ -15,6 +15,7 @@ __all__ = [
     "Parser", "ParseError", "ErrorMetrics",
     "ASTNode", "ProgramNode",
     "LiteralExpr", "IdentifierExpr", "BinaryExpr", "UnaryExpr", "CallExpr", "AssignmentExpr",
+    "IncDecExpr",
     "BlockStmt", "ExprStmt", "IfStmt", "WhileStmt", "ForStmt", "ReturnStmt", "VarDeclStmt", "EmptyStmt",
     "Param", "FunctionDecl", "StructDecl",
     "ASTVisitor",

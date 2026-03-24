@@ -60,7 +60,7 @@ class Preprocessor:
         lines = self._source.split("\n")
         output_lines: list[str] = []
         i = 0
-        skip_depth = 0  # How many nested #ifdef we're skipping
+        skip_depth = 0
 
         while i < len(lines):
             line = lines[i]
@@ -68,7 +68,6 @@ class Preprocessor:
             line_num = i + 1
 
             if stripped.startswith("#"):
-                # Directive line
                 parts = stripped[1:].split(None, 2)
                 directive = parts[0].lower() if parts else ""
 
@@ -76,17 +75,16 @@ class Preprocessor:
                     if skip_depth == 0 and len(parts) >= 2:
                         name = parts[1]
                         raw_value = parts[2] if len(parts) >= 3 else ""
-                        # Strip trailing // comment from value
                         if "//" in raw_value:
                             raw_value = raw_value.split("//")[0]
                         value = raw_value.strip()
                         if not self._valid_macro_name(name):
                             self.errors.append(
-                                PreprocessorError(f"invalid macro name: {name}", line_num, 1)
+                                PreprocessorError(f"недопустимое имя макроса: {name}", line_num, 1)
                             )
                         else:
                             self._macros[name] = value
-                    output_lines.append("")  # Keep line count, replace directive with empty line
+                    output_lines.append("")
                 elif directive == "undef":
                     if skip_depth == 0 and len(parts) >= 2:
                         self._macros.pop(parts[1], None)
@@ -108,21 +106,20 @@ class Preprocessor:
                         skip_depth -= 1
                     output_lines.append("")
                 else:
-                    output_lines.append("")  # Unknown directive, keep line
+                    output_lines.append("")
                 i += 1
                 continue
 
             if skip_depth > 0:
-                output_lines.append("")  # Skipped line, preserve line count
+                output_lines.append("")
             else:
-                # Expand macros in this line (macros current at this point)
                 expanded = self._expand_macros_inner(line, set())
                 output_lines.append(expanded)
             i += 1
 
         if skip_depth > 0:
             self.errors.append(
-                PreprocessorError("unmatched #ifdef/#ifndef without #endif", len(lines), 1)
+                PreprocessorError("непарные #ifdef/#ifndef без #endif", len(lines), 1)
             )
 
         return "\n".join(output_lines)
@@ -171,9 +168,7 @@ class Preprocessor:
                 i += 1
                 continue
 
-            # Single-line comment
             if c == "/" and i + 1 < n and source[i + 1] == "/":
-                # Skip until newline, replace with newline to preserve line count
                 j = i + 2
                 while j < n and source[j] not in ("\n", "\r"):
                     j += 1
@@ -186,22 +181,21 @@ class Preprocessor:
                 i = j
                 continue
 
-            # Multi-line comment
             if c == "/" and i + 1 < n and source[i + 1] == "*":
                 start_line = source[:i].count("\n") + 1
                 start_col = i - source[:i].rfind("\n") if "\n" in source[:i] else i + 1
-                result.append("  ")  # preserve column count for opening "/*"
+                result.append("  ")
                 j = i + 2
                 depth = 1
                 while j < n and depth > 0:
                     if j + 1 < n and source[j] == "/" and source[j + 1] == "*":
                         depth += 1
-                        result.append("  ")  # preserve column count for "/*"
+                        result.append("  ")
                         j += 2
                         continue
                     if j + 1 < n and source[j] == "*" and source[j + 1] == "/":
                         depth -= 1
-                        result.append("  ")  # preserve column count for "*/"
+                        result.append("  ")
                         j += 2
                         continue
                     if source[j] in ("\n", "\r"):
@@ -211,11 +205,11 @@ class Preprocessor:
                             result.append("\n")
                             j += 1
                     else:
-                        result.append(" ")  # Replace comment chars with space
+                        result.append(" ")
                         j += 1
                 if depth > 0:
                     self.errors.append(
-                        PreprocessorError("unterminated block comment", start_line, start_col)
+                        PreprocessorError("незавершённый блочный комментарий", start_line, start_col)
                     )
                 i = j
                 continue
@@ -259,7 +253,6 @@ class Preprocessor:
                 i += 1
                 continue
 
-            # Check for identifier (potential macro)
             if _is_identifier_start(c) or (c == "_" and i + 1 < n and _is_identifier_part(source[i + 1])):
                 start = i
                 while i < n and _is_identifier_part(source[i]):
@@ -269,7 +262,7 @@ class Preprocessor:
                     if name in expansion_stack:
                         self.errors.append(
                             PreprocessorError(
-                                f"macro recursion detected: {name}",
+                                f"рекурсия макроса: {name}",
                                 source[:start].count("\n") + 1,
                                 (start - source[:start].rfind("\n")) if "\n" in source[:start] else start + 1,
                             )

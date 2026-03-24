@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr,
+    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -202,4 +202,10 @@ class _DotGenerator(ASTVisitor):
         self._add_node(nid, f"Assignment\\n{node.target} {node.operator}", _EXPR_COLOR)
         vid = node.value.accept(self)
         self._add_edge(nid, vid)
+        return nid
+
+    def visit_incdec(self, node: IncDecExpr) -> str:
+        nid = self._new_id()
+        form = f"{node.operator}{node.target}" if node.prefix else f"{node.target}{node.operator}"
+        self._add_node(nid, f"IncDec\\n{form}", _EXPR_COLOR)
         return nid

@@ -1,2 +1,2 @@
-1:1 ERROR "12.34.56" malformed number literal
+1:1 ERROR "12.34.56" некорректная числовая константа
 4:1 END_OF_FILE ""

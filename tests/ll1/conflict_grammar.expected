@@ -1,0 +1,23 @@
+## FIRST
+- A: ['a']
+- B: ['a']
+- Program: ['a']
+- S: ['a']
+
+## FOLLOW
+- A: ['$']
+- B: ['$']
+- Program: ['$']
+- S: ['$']
+
+## Predictive table (LL(1))
+
+| NonTerm | $ | a |
+|---|---|---|
+| A |  | a |
+| B |  | a |
+| Program |  | S $ |
+| S |  | A |
+
+## Conflicts
+- conflict M[S, a] : ['A']  vs  ['B']

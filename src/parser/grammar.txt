@@ -1,63 +1,173 @@
-Program        ::= { Declaration } ;
+// Грамматика языка MiniCompiler
 
-Declaration    ::= FunctionDecl
-                 | StructDecl
-                 | VarDecl ;
+Program         = { Declaration } EOF;
+Declaration     = FunctionDecl | StructDecl | Statement;
 
-FunctionDecl   ::= "fn" IDENTIFIER "(" [ Parameters ] ")" [ "->" Type ] Block ;
-StructDecl     ::= "struct" IDENTIFIER "{" { VarDecl } "}" ;
-VarDecl        ::= Type IDENTIFIER [ "=" Expression ] ";" ;
+FunctionDecl    = "fn" Identifier "(" [ Parameters ] ")" [ "->" Type ] Block;
+Parameters      = Parameter { "," Parameter };
+Parameter       = Type Identifier;
 
-Statement      ::= Block
-                 | IfStmt
-                 | WhileStmt
-                 | ForStmt
-                 | ReturnStmt
-                 | ExprStmt
-                 | VarDecl
-                 | ";" ;
+StructDecl      = "struct" Identifier "{" { VarDecl } "}";
 
-Block          ::= "{" { Statement } "}" ;
-IfStmt         ::= "if" "(" Expression ")" Statement [ "else" Statement ] ;
-WhileStmt      ::= "while" "(" Expression ")" Statement ;
-ForStmt        ::= "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement ;
-ForInit        ::= VarDeclNoSemi | Expression ;
-VarDeclNoSemi  ::= Type IDENTIFIER [ "=" Expression ] ;
-ReturnStmt     ::= "return" [ Expression ] ";" ;
-ExprStmt       ::= Expression ";" ;
+VarDecl         = Type Identifier [ "=" Expression ] ";";
 
-Expression     ::= Assignment ;
-Assignment     ::= LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ] ;
-LogicalOr      ::= LogicalAnd { "||" LogicalAnd } ;
-LogicalAnd     ::= Equality { "&&" Equality } ;
-Equality       ::= Relational [ ( "==" | "!=" ) Relational ] ;
-Relational     ::= Additive [ ( "<" | "<=" | ">" | ">=" ) Additive ] ;
-Additive       ::= Multiplicative { ( "+" | "-" ) Multiplicative } ;
-Multiplicative ::= Unary { ( "*" | "/" | "%" ) Unary } ;
-Unary          ::= ( "-" | "!" ) Unary | Primary ;
-Primary        ::= Literal
-                 | IDENTIFIER [ "(" [ Arguments ] ")" ]
-                 | "(" Expression ")" ;
-Arguments      ::= Expression { "," Expression } ;
+Type            = "int" | "float" | "bool" | "void" | Identifier;
 
-Type           ::= "int" | "float" | "bool" | "void" | IDENTIFIER ;
-Parameters     ::= Parameter { "," Parameter } ;
-Parameter      ::= Type IDENTIFIER ;
+Statement       = Block
+                | IfStmt
+                | WhileStmt
+                | ForStmt
+                | ReturnStmt
+                | ExprStmt
+                | VarDecl
+                | ";";
 
-Literal        ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL | BOOL_LITERAL | "null" ;
+Block           = "{" { Statement } "}";
 
-Precedence (highest to lowest):
-  1. Primary (literals, identifiers, parenthesized, call)
-  2. Unary (-, !)
-  3. Multiplicative (*, /, %)
-  4. Additive (+, -)
-  5. Relational (<, <=, >, >=)
-  6. Equality (==, !=)
-  7. Logical AND (&&)
-  8. Logical OR (||)
-  9. Assignment (=, +=, -=, *=, /=, %=)
+IfStmt          = "if" "(" Expression ")" Statement [ "else" Statement ];
+WhileStmt       = "while" "(" Expression ")" Statement;
 
-Associativity:
-  - Left-associative: + - * / % && ||
-  - Right-associative: = += -= *= /= %=
-  - Non-associative: == != < <= > >=
+ForStmt         = "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement;
+ForInit         = VarDeclNoSemi | Expression;
+VarDeclNoSemi   = Type Identifier [ "=" Expression ];
+
+ReturnStmt      = "return" [ Expression ] ";";
+ExprStmt        = Expression ";";
+
+Expression      = Assignment;
+
+Assignment      = LogicalOr [ ( "=" | "+=" | "-=" | "*=" | "/=" | "%=" ) Assignment ];
+
+LogicalOr       = LogicalAnd { "||" LogicalAnd };
+LogicalAnd      = Equality { "&&" Equality };
+
+Equality        = Relational [ ( "==" | "!=" ) Relational ];
+Relational      = Additive [ ( "<" | "<=" | ">" | ">=" ) Additive ];
+
+Additive        = Multiplicative { ( "+" | "-" ) Multiplicative };
+Multiplicative  = Unary { ( "*" | "/" | "%" ) Unary };
+
+Unary           = ( "++" | "--" | "-" | "!" ) Unary
+                | Postfix [ ( "++" | "--" ) ];
+
+Postfix         = PrimaryBase { PostfixSuffix };
+PrimaryBase     = Literal | Identifier | "(" Expression ")";
+PostfixSuffix   = "(" [ Arguments ] ")" | "[" Expression "]" | "." Identifier;
+Arguments       = Expression { "," Expression };
+
+Literal         = IntLiteral | FloatLiteral | StringLiteral | BoolLiteral | "null";
+
+// Приоритет операторов (высокий -> низкий)
+// 1. PrimaryBase
+// 2. Цепочка PostfixSuffix: () [] .
+// 3. Постфиксные ++/--
+// 4. Унарные: -, !, ++x, --x
+// 5. * / %
+// 6. + -
+// 7. < <= > >=   (неассоциативные)
+// 8. == !=       (неассоциативные)
+// 9. &&
+// 10. ||
+// 11. Assignment (=, +=, -=, *=, /=, %=)
+
+// LL(1) замечания
+// - Висячий else: "else" привязывается к ближайшему (вложенному) "if", у которого нет "else".
+// - Типы vs инструкции: Identifier считается началом типа только если это известный тип (имя struct).
+// - Forward-типы: поддерживаются через 2 прохода (сбор KnownTypes -> парсинг с TYPE_ID).
+// - LValue (для присваивания и ++/--): проверяется отдельно (Identifier / x[i] / x.field / (lvalue)).
+
+--------------------------------------------------------------------------------
+BNF (expanded; no EBNF sugar) for FIRST/FOLLOW and LL(1) table construction
+--------------------------------------------------------------------------------
+
+Соглашения:
+  - EPS обозначает эпсилон (пустую строку)
+  - $ обозначает конец ввода
+  - IDENT означает токен "идентификатор"
+  - TYPE_ID означает идентификатор, являющийся именем типа (собирается на предварительном проходе)
+  - Встроенные ключевые слова типов: KW_INT, KW_FLOAT, KW_BOOL, KW_VOID
+  - Висячий else решается привязкой "else" к ближайшему непарному "if" (правило реализации).
+
+Program        = DeclList $;
+DeclList       = Declaration DeclList | EPS;
+
+Declaration    = FunctionDecl | StructDecl | Statement;
+
+FunctionDecl   = KW_FN IDENT LPAREN ParamListOpt RPAREN RetTypeOpt Block;
+RetTypeOpt     = ARROW Type | EPS;
+
+StructDecl     = KW_STRUCT IDENT LBRACE VarDeclList RBRACE;
+VarDeclList    = VarDecl VarDeclList | EPS;
+VarDecl        = Type IDENT VarInitOpt SEMI;
+VarInitOpt     = ASSIGN Expression | EPS;
+
+Statement      = Block | IfStmt | WhileStmt | ForStmt | ReturnStmt | ExprStmt | VarDecl | SEMI;
+
+Block          = LBRACE StmtList RBRACE;
+StmtList       = Statement StmtList | EPS;
+
+IfStmt         = KW_IF LPAREN Expression RPAREN Block ElseOpt;
+ElseOpt        = KW_ELSE Block | EPS;
+
+WhileStmt      = KW_WHILE LPAREN Expression RPAREN Statement;
+ForStmt        = KW_FOR LPAREN ForInitOpt SEMI ExprOpt SEMI ExprOpt RPAREN Statement;
+ForInitOpt     = VarDeclNoSemi | Expression | EPS;
+VarDeclNoSemi  = Type IDENT VarInitOpt;
+
+ReturnStmt     = KW_RETURN ExprOpt SEMI;
+ExprStmt       = Expression SEMI;
+ExprOpt        = Expression | EPS;
+
+Type           = BuiltinType | TYPE_ID;
+BuiltinType    = KW_INT | KW_FLOAT | KW_BOOL | KW_VOID;
+
+ParamListOpt   = ParamList | EPS;
+ParamList      = Param ParamListTail;
+ParamListTail  = COMMA Param ParamListTail | EPS;
+Param          = Type IDENT;
+
+Expression     = Assignment;
+Assignment     = LogicalOr AssignTail;
+AssignTail     = AssignOp Assignment | EPS;
+AssignOp       = ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | SLASH_ASSIGN | PERCENT_ASSIGN;
+
+LogicalOr      = LogicalAnd LogicalOrTail;
+LogicalOrTail  = OR_OR LogicalAnd LogicalOrTail | EPS;
+
+LogicalAnd     = Equality LogicalAndTail;
+LogicalAndTail = AND_AND Equality LogicalAndTail | EPS;
+
+Equality       = Relational EqualityTail;
+EqualityTail   = EQEQ Relational | BANGEQ Relational | EPS;
+
+Relational     = Additive RelTail;
+RelTail        = LT Additive | LTE Additive | GT Additive | GTE Additive | EPS;
+
+Additive       = Multiplicative AddTail;
+AddTail        = PLUS Multiplicative AddTail | MINUS Multiplicative AddTail | EPS;
+
+Multiplicative = Unary MulTail;
+MulTail        = STAR Unary MulTail | SLASH Unary MulTail | PERCENT Unary MulTail | EPS;
+
+Unary          = PLUSPLUS Unary
+               | MINUSMINUS Unary
+               | MINUS Unary
+               | BANG Unary
+               | Postfix PostIncOpt;
+
+PostIncOpt     = PLUSPLUS | MINUSMINUS | EPS;
+
+Postfix        = PrimaryBase PostfixTail;
+PostfixTail    = PostfixSuffix PostfixTail | EPS;
+PostfixSuffix  = CallSuffix | IndexSuffix | MemberSuffix;
+
+CallSuffix     = LPAREN ArgListOpt RPAREN;
+ArgListOpt     = ArgList | EPS;
+ArgList        = Expression ArgListTail;
+ArgListTail    = COMMA Expression ArgListTail | EPS;
+
+IndexSuffix    = LBRACKET Expression RBRACKET;
+MemberSuffix   = DOT IDENT;
+
+PrimaryBase    = Literal | IDENT | LPAREN Expression RPAREN;
+Literal        = INT_LIT | FLOAT_LIT | STRING_LIT | BOOL_LIT | NULL_LIT;

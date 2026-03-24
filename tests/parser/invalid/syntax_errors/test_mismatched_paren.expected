@@ -1,4 +1,4 @@
-ERROR 2:19 expected ')' after expression (expected RPAREN)
+ОШИБКА 2:19 ожидалось ')' после выражения (ожидалось: RPAREN)
 AST:
 Program [1:1]:
   FunctionDecl: main -> void [1:1]
@@ -6,4 +6,4 @@ Program [1:1]:
     Body:
       Block [1:11]:
         EmptyStmt [2:19]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

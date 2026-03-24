@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr,
+    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -142,6 +142,9 @@ class _PrettyPrinter(ASTVisitor):
     def visit_assignment(self, node: AssignmentExpr) -> None:
         self._emit(f"Assignment: {node.target} {node.operator} {_expr_str(node.value)}")
 
+    def visit_incdec(self, node: IncDecExpr) -> None:
+        self._emit(f"IncDec: {_expr_str(node)}")
+
 
 def _literal_repr(node: LiteralExpr) -> str:
     match node.type_tag:
@@ -173,4 +176,8 @@ def _expr_str(node: ASTNode) -> str:
             return f"{node.callee}({args})"
         case AssignmentExpr():
             return f"({node.target} {node.operator} {_expr_str(node.value)})"
+        case IncDecExpr():
+            if node.prefix:
+                return f"({node.operator}{node.target})"
+            return f"({node.target}{node.operator})"
     return repr(node)

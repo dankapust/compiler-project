@@ -13,10 +13,6 @@ class ASTNode:
         raise NotImplementedError
 
 
-# ---------------------------------------------------------------------------
-# Program
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True)
 class ProgramNode(ASTNode):
     declarations: tuple[ASTNode, ...] = ()
@@ -25,14 +21,10 @@ class ProgramNode(ASTNode):
         return visitor.visit_program(self)
 
 
-# ---------------------------------------------------------------------------
-# Expressions
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True)
 class LiteralExpr(ASTNode):
     value: Any
-    type_tag: str  # "int", "float", "string", "bool", "null"
+    type_tag: str
 
     def accept(self, visitor: ASTVisitor) -> Any:
         return visitor.visit_literal(self)
@@ -84,9 +76,15 @@ class AssignmentExpr(ASTNode):
         return visitor.visit_assignment(self)
 
 
-# ---------------------------------------------------------------------------
-# Statements
-# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class IncDecExpr(ASTNode):
+    target: str
+    operator: str
+    prefix: bool
+
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_incdec(self)
+
 
 @dataclass(frozen=True)
 class BlockStmt(ASTNode):
@@ -158,10 +156,6 @@ class EmptyStmt(ASTNode):
         return visitor.visit_empty_stmt(self)
 
 
-# ---------------------------------------------------------------------------
-# Declarations
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True)
 class Param(ASTNode):
     param_type: str
@@ -191,10 +185,6 @@ class StructDecl(ASTNode):
         return visitor.visit_struct_decl(self)
 
 
-# ---------------------------------------------------------------------------
-# Visitor
-# ---------------------------------------------------------------------------
-
 class ASTVisitor:
     def visit_program(self, node: ProgramNode) -> Any: ...
     def visit_literal(self, node: LiteralExpr) -> Any: ...
@@ -203,6 +193,7 @@ class ASTVisitor:
     def visit_unary(self, node: UnaryExpr) -> Any: ...
     def visit_call(self, node: CallExpr) -> Any: ...
     def visit_assignment(self, node: AssignmentExpr) -> Any: ...
+    def visit_incdec(self, node: IncDecExpr) -> Any: ...
     def visit_block(self, node: BlockStmt) -> Any: ...
     def visit_expr_stmt(self, node: ExprStmt) -> Any: ...
     def visit_if(self, node: IfStmt) -> Any: ...

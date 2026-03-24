@@ -1,4 +1,4 @@
-1:1 ERROR ""hello" unterminated string literal
+1:1 ERROR ""hello" незавершённая строковая константа
 2:1 IDENTIFIER "world"
-2:6 ERROR """ unterminated string literal
+2:6 ERROR """ незавершённая строковая константа
 5:1 END_OF_FILE ""

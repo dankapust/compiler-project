@@ -3,7 +3,7 @@ from __future__ import annotations
 from lexer.token import Token, TokenType
 from parser.ast import (
     ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr,
+    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     FunctionDecl, StructDecl, Param,
 )
@@ -35,6 +35,7 @@ class Parser:
         self.errors: list[ParseError] = []
         self.metrics = ErrorMetrics()
         self._just_synced = False
+        self._known_types: set[str] = {"int", "float", "bool", "void"}
 
     def parse(self) -> ProgramNode:
         decls: list[ASTNode] = []
@@ -46,10 +47,6 @@ class Parser:
         line = tok.line if tok else 1
         col = tok.column if tok else 1
         return ProgramNode(line, col, tuple(decls))
-
-    # ------------------------------------------------------------------
-    # Declarations
-    # ------------------------------------------------------------------
 
     def _declaration(self) -> ASTNode | None:
         try:
@@ -65,11 +62,11 @@ class Parser:
             return None
 
     def _function_decl(self) -> FunctionDecl:
-        fn_tok = self._consume(TokenType.KW_FN, "expected 'fn'")
-        name_tok = self._consume(TokenType.IDENTIFIER, "expected function name")
-        self._consume(TokenType.LPAREN, "expected '(' after function name")
+        fn_tok = self._consume(TokenType.KW_FN, "ожидалось ключевое слово 'fn'")
+        name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя функции")
+        self._consume(TokenType.LPAREN, "ожидалось '(' после имени функции")
         params = self._parameters()
-        self._consume(TokenType.RPAREN, "expected ')' after parameters")
+        self._consume(TokenType.RPAREN, "ожидалось ')' после списка параметров")
         ret_type = "void"
         if self._match(TokenType.ARROW):
             ret_type = self._type_name()
@@ -77,30 +74,31 @@ class Parser:
         return FunctionDecl(fn_tok.line, fn_tok.column, name_tok.lexeme, tuple(params), ret_type, body)
 
     def _struct_decl(self) -> StructDecl:
-        st_tok = self._consume(TokenType.KW_STRUCT, "expected 'struct'")
-        name_tok = self._consume(TokenType.IDENTIFIER, "expected struct name")
-        self._consume(TokenType.LBRACE, "expected '{' after struct name")
+        st_tok = self._consume(TokenType.KW_STRUCT, "ожидалось ключевое слово 'struct'")
+        name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя структуры")
+        self._known_types.add(name_tok.lexeme)
+        self._consume(TokenType.LBRACE, "ожидалось '{' после имени структуры")
         fields: list[VarDeclStmt] = []
         while not self._check(TokenType.RBRACE) and not self._is_at_end():
             fields.append(self._var_decl())
-        self._consume(TokenType.RBRACE, "expected '}' after struct body")
+        self._consume(TokenType.RBRACE, "ожидалось '}' после тела структуры")
         return StructDecl(st_tok.line, st_tok.column, name_tok.lexeme, tuple(fields))
 
     def _var_decl(self) -> VarDeclStmt:
         type_tok = self._peek()
         vtype = self._type_name()
-        name_tok = self._consume(TokenType.IDENTIFIER, "expected variable name")
+        name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя переменной")
         init: ASTNode | None = None
         if self._match(TokenType.ASSIGN):
             init = self._expression()
-        self._consume(TokenType.SEMICOLON, "expected ';' after variable declaration",
-                      suggestion="Did you forget a semicolon?")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после объявления переменной",
+                      suggestion="Не забыли ли точку с запятой?")
         return VarDeclStmt(type_tok.line, type_tok.column, vtype, name_tok.lexeme, init)
 
     def _var_decl_no_semi(self) -> VarDeclStmt:
         type_tok = self._peek()
         vtype = self._type_name()
-        name_tok = self._consume(TokenType.IDENTIFIER, "expected variable name")
+        name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя переменной")
         init: ASTNode | None = None
         if self._match(TokenType.ASSIGN):
             init = self._expression()
@@ -118,7 +116,7 @@ class Parser:
     def _parameter(self) -> Param:
         type_tok = self._peek()
         ptype = self._type_name()
-        name_tok = self._consume(TokenType.IDENTIFIER, "expected parameter name")
+        name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя параметра")
         return Param(type_tok.line, type_tok.column, ptype, name_tok.lexeme)
 
     def _type_name(self) -> str:
@@ -127,21 +125,15 @@ class Parser:
                 return self._previous().lexeme
         if self._check(TokenType.IDENTIFIER):
             return self._advance().lexeme
-        self._error("expected type name")
+        self._error("ожидалось имя типа")
         return "<error>"
 
     def _is_type_start(self) -> bool:
         if self._peek().type in _TYPE_KEYWORDS:
             return True
-        if self._peek().type == TokenType.IDENTIFIER:
-            pos = self._pos
-            if pos + 1 < len(self._tokens) and self._tokens[pos + 1].type == TokenType.IDENTIFIER:
-                return True
+        if self._peek().type == TokenType.IDENTIFIER and self._peek().lexeme in self._known_types:
+            return True
         return False
-
-    # ------------------------------------------------------------------
-    # Statements
-    # ------------------------------------------------------------------
 
     def _statement(self) -> ASTNode:
         if self._check(TokenType.LBRACE):
@@ -162,20 +154,20 @@ class Parser:
         return self._expr_stmt()
 
     def _block(self) -> BlockStmt:
-        tok = self._consume(TokenType.LBRACE, "expected '{'")
+        tok = self._consume(TokenType.LBRACE, "ожидалось '{'")
         stmts: list[ASTNode] = []
         while not self._check(TokenType.RBRACE) and not self._is_at_end():
             d = self._declaration()
             if d is not None:
                 stmts.append(d)
-        self._consume(TokenType.RBRACE, "expected '}'")
+        self._consume(TokenType.RBRACE, "ожидалось '}'")
         return BlockStmt(tok.line, tok.column, tuple(stmts))
 
     def _if_stmt(self) -> IfStmt:
-        tok = self._consume(TokenType.KW_IF, "expected 'if'")
-        self._consume(TokenType.LPAREN, "expected '(' after 'if'")
+        tok = self._consume(TokenType.KW_IF, "ожидалось ключевое слово 'if'")
+        self._consume(TokenType.LPAREN, "ожидалось '(' после 'if'")
         cond = self._expression()
-        self._consume(TokenType.RPAREN, "expected ')' after if condition")
+        self._consume(TokenType.RPAREN, "ожидалось ')' после условия if")
         then_br = self._statement()
         else_br: ASTNode | None = None
         if self._match(TokenType.KW_ELSE):
@@ -183,58 +175,54 @@ class Parser:
         return IfStmt(tok.line, tok.column, cond, then_br, else_br)
 
     def _while_stmt(self) -> WhileStmt:
-        tok = self._consume(TokenType.KW_WHILE, "expected 'while'")
-        self._consume(TokenType.LPAREN, "expected '(' after 'while'")
+        tok = self._consume(TokenType.KW_WHILE, "ожидалось ключевое слово 'while'")
+        self._consume(TokenType.LPAREN, "ожидалось '(' после 'while'")
         cond = self._expression()
-        self._consume(TokenType.RPAREN, "expected ')' after while condition")
+        self._consume(TokenType.RPAREN, "ожидалось ')' после условия while")
         body = self._statement()
         return WhileStmt(tok.line, tok.column, cond, body)
 
     def _for_stmt(self) -> ForStmt:
-        tok = self._consume(TokenType.KW_FOR, "expected 'for'")
-        self._consume(TokenType.LPAREN, "expected '(' after 'for'")
+        tok = self._consume(TokenType.KW_FOR, "ожидалось ключевое слово 'for'")
+        self._consume(TokenType.LPAREN, "ожидалось '(' после 'for'")
 
         init: ASTNode | None = None
         if self._match(TokenType.SEMICOLON):
             pass
         elif self._is_type_start():
             init = self._var_decl_no_semi()
-            self._consume(TokenType.SEMICOLON, "expected ';' after for-init")
+            self._consume(TokenType.SEMICOLON, "ожидалось ';' после инициализации for")
         else:
             init = self._expression()
-            self._consume(TokenType.SEMICOLON, "expected ';' after for-init")
+            self._consume(TokenType.SEMICOLON, "ожидалось ';' после инициализации for")
 
         cond: ASTNode | None = None
         if not self._check(TokenType.SEMICOLON):
             cond = self._expression()
-        self._consume(TokenType.SEMICOLON, "expected ';' after for-condition")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после условия for")
 
         update: ASTNode | None = None
         if not self._check(TokenType.RPAREN):
             update = self._expression()
-        self._consume(TokenType.RPAREN, "expected ')' after for clauses")
+        self._consume(TokenType.RPAREN, "ожидалось ')' после заголовка for")
 
         body = self._statement()
         return ForStmt(tok.line, tok.column, init, cond, update, body)
 
     def _return_stmt(self) -> ReturnStmt:
-        tok = self._consume(TokenType.KW_RETURN, "expected 'return'")
+        tok = self._consume(TokenType.KW_RETURN, "ожидалось ключевое слово 'return'")
         value: ASTNode | None = None
         if not self._check(TokenType.SEMICOLON):
             value = self._expression()
-        self._consume(TokenType.SEMICOLON, "expected ';' after return",
-                      suggestion="Did you forget a semicolon?")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после return",
+                      suggestion="Не забыли ли точку с запятой?")
         return ReturnStmt(tok.line, tok.column, value)
 
     def _expr_stmt(self) -> ExprStmt:
         expr = self._expression()
-        self._consume(TokenType.SEMICOLON, "expected ';' after expression",
-                      suggestion="Did you forget a semicolon?")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после выражения",
+                      suggestion="Не забыли ли точку с запятой?")
         return ExprStmt(expr.line, expr.column, expr)
-
-    # ------------------------------------------------------------------
-    # Expressions (precedence climbing)
-    # ------------------------------------------------------------------
 
     def _expression(self) -> ASTNode:
         return self._assignment()
@@ -244,7 +232,7 @@ class Parser:
         if self._peek().type in _ASSIGN_OPS:
             op_tok = self._advance()
             if not isinstance(expr, IdentifierExpr):
-                self._error_at(expr.line, expr.column, "invalid assignment target")
+                self._error_at(expr.line, expr.column, "недопустимая цель присваивания")
             value = self._assignment()
             target = expr.name if isinstance(expr, IdentifierExpr) else "<error>"
             return AssignmentExpr(expr.line, expr.column, target, op_tok.lexeme, value)
@@ -273,7 +261,7 @@ class Parser:
             right = self._relational()
             left = BinaryExpr(left.line, left.column, left, op_tok.lexeme, right)
             if self._peek().type in (TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
-                self._error("chained equality comparison is not allowed (non-associative)")
+                self._error("цепочка операций сравнения на равенство недопустима (неассоциативно)")
         return left
 
     def _relational(self) -> ASTNode:
@@ -283,7 +271,7 @@ class Parser:
             right = self._additive()
             left = BinaryExpr(left.line, left.column, left, op_tok.lexeme, right)
             if self._peek().type in (TokenType.LESS, TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL):
-                self._error("chained relational comparison is not allowed (non-associative)")
+                self._error("цепочка отношений (<, >, …) недопустима (неассоциативно)")
         return left
 
     def _additive(self) -> ASTNode:
@@ -303,11 +291,27 @@ class Parser:
         return left
 
     def _unary(self) -> ASTNode:
+        if self._peek().type in (TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+            op_tok = self._advance()
+            operand = self._unary()
+            if isinstance(operand, IdentifierExpr):
+                return IncDecExpr(op_tok.line, op_tok.column, operand.name, op_tok.lexeme, True)
+            self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
+            return operand
         if self._peek().type in (TokenType.MINUS, TokenType.BANG):
             op_tok = self._advance()
             operand = self._unary()
             return UnaryExpr(op_tok.line, op_tok.column, op_tok.lexeme, operand)
-        return self._primary()
+        return self._postfix()
+
+    def _postfix(self) -> ASTNode:
+        expr = self._primary()
+        if self._peek().type in (TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
+            op_tok = self._advance()
+            if isinstance(expr, IdentifierExpr):
+                return IncDecExpr(expr.line, expr.column, expr.name, op_tok.lexeme, False)
+            self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
+        return expr
 
     def _primary(self) -> ASTNode:
         tok = self._peek()
@@ -332,16 +336,16 @@ class Parser:
                 self._advance()
                 if self._match(TokenType.LPAREN):
                     args = self._arguments()
-                    self._consume(TokenType.RPAREN, "expected ')' after arguments")
+                    self._consume(TokenType.RPAREN, "ожидалось ')' после аргументов")
                     return CallExpr(tok.line, tok.column, tok.lexeme, tuple(args))
                 return IdentifierExpr(tok.line, tok.column, tok.lexeme)
             case TokenType.LPAREN:
                 self._advance()
                 expr = self._expression()
-                self._consume(TokenType.RPAREN, "expected ')' after expression")
+                self._consume(TokenType.RPAREN, "ожидалось ')' после выражения")
                 return expr
 
-        self._error(f"expected expression, got {tok.type.name}")
+        self._error(f"ожидалось выражение, получен токен {tok.type.name}")
         return LiteralExpr(tok.line, tok.column, None, "null")
 
     def _arguments(self) -> list[ASTNode]:
@@ -351,10 +355,6 @@ class Parser:
         while self._match(TokenType.COMMA):
             args.append(self._expression())
         return args
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     def _peek(self) -> Token:
         return self._tokens[self._pos]
@@ -385,12 +385,8 @@ class Parser:
     def _consume(self, tt: TokenType, message: str, suggestion: str | None = None) -> Token:
         if self._check(tt):
             return self._advance()
-        self._error(f"{message} (expected {tt.name})", suggestion=suggestion)
+        self._error(f"{message} (ожидалось: {tt.name})", suggestion=suggestion)
         return self._peek()
-
-    # ------------------------------------------------------------------
-    # Error handling & recovery
-    # ------------------------------------------------------------------
 
     def _error(self, message: str, suggestion: str | None = None) -> None:
         tok = self._peek()

@@ -4,7 +4,7 @@ from typing import Any
 
 from parser.ast import (
     ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr,
+    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -139,6 +139,14 @@ def node_to_jsonable(node: ASTNode) -> dict[str, Any]:
                 "operator": node.operator,
                 "value": node_to_jsonable(node.value),
             }
+        case IncDecExpr():
+            return {
+                "node": "IncDecExpr",
+                "line": node.line, "column": node.column,
+                "target": node.target,
+                "operator": node.operator,
+                "prefix": node.prefix,
+            }
     raise ValueError(f"unknown node type: {type(node).__name__}")
 
 
@@ -193,4 +201,6 @@ def from_jsonable(data: dict[str, Any]) -> ASTNode:
             return CallExpr(line, col, data["callee"], tuple(from_jsonable(a) for a in data["arguments"]))
         case "AssignmentExpr":
             return AssignmentExpr(line, col, data["target"], data["operator"], from_jsonable(data["value"]))
+        case "IncDecExpr":
+            return IncDecExpr(line, col, data["target"], data["operator"], bool(data["prefix"]))
     raise ValueError(f"unknown node type: {data.get('node')}")

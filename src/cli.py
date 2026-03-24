@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+import subprocess
 
 from lexer.scanner import Scanner
 from lexer.token import TokenType
@@ -12,6 +13,15 @@ from parser.parser import Parser
 from parser.pretty import pretty_print
 from parser.dot import to_dot
 from parser.codec import node_to_jsonable
+from parser.ll1_tables import compute_all, table_to_markdown, conflicts_to_dot
+from semantic.analyzer import SemanticAnalyzer
+from semantic.output import (
+    format_decorated_ast_text,
+    format_symbol_table_json,
+    format_symbol_table_text,
+    format_type_annotations,
+    format_validation_report,
+)
 
 
 def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
@@ -41,7 +51,7 @@ def _cmd_lex(args: argparse.Namespace) -> int:
     try:
         source = src_path.read_text(encoding="utf-8")
     except OSError as e:
-        print(f"error: cannot read input file: {e}", file=sys.stderr)
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
         return 2
 
     source, pp_errors = _preprocess(source, args.preprocess)
@@ -62,7 +72,7 @@ def _cmd_lex(args: argparse.Namespace) -> int:
     try:
         out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError as e:
-        print(f"error: cannot write output file: {e}", file=sys.stderr)
+        print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
         return 2
 
     had_errors = bool(scanner.errors) or bool(pp_errors)
@@ -77,7 +87,7 @@ def _cmd_parse(args: argparse.Namespace) -> int:
     try:
         source = src_path.read_text(encoding="utf-8")
     except OSError as e:
-        print(f"error: cannot read input file: {e}", file=sys.stderr)
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
         return 2
 
     source, pp_errors = _preprocess(source, args.preprocess)
@@ -113,19 +123,170 @@ def _cmd_parse(args: argparse.Namespace) -> int:
         case "json":
             out_text = json.dumps(node_to_jsonable(program), ensure_ascii=False, indent=2) + "\n"
         case _:
-            print(f"error: unknown ast format: {args.ast_format}", file=sys.stderr)
+            print(f"ошибка: неизвестный формат AST: {args.ast_format}", file=sys.stderr)
             return 2
+
+    if args.output:
+        try:
+            out_path = Path(args.output)
+            out_path.write_text(out_text, encoding="utf-8")
+        except OSError as e:
+            print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
+            return 2
+    else:
+        sys.stdout.write(out_text)
+
+    if args.render_png:
+        if args.ast_format != "dot":
+            print("ошибка: для --render-png нужен --ast-format dot", file=sys.stderr)
+            return 2
+        if not args.output:
+            print("ошибка: для --render-png укажите --output <файл.dot>", file=sys.stderr)
+            return 2
+
+        dot_path = Path(args.output)
+        png_path = dot_path.with_suffix(".png")
+        try:
+            subprocess.run(
+                ["dot", "-Tpng", str(dot_path), "-o", str(png_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except FileNotFoundError:
+            print("ошибка: программа Graphviz «dot» не найдена в PATH (установите Graphviz для PNG)", file=sys.stderr)
+            return 2
+        except subprocess.CalledProcessError as e:
+            msg = e.stderr.strip() if e.stderr else "сбой dot"
+            print(f"ошибка: сбой dot: {msg}", file=sys.stderr)
+            return 2
+
+    return 1 if had_errors else 0
+
+
+def _cmd_check(args: argparse.Namespace) -> int:
+    src_path = Path(args.input)
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
+        return 2
+
+    source, pp_errors = _preprocess(source, args.preprocess)
+    tokens, lex_errors = _tokenize(source)
+    parser = Parser(tokens=tokens, max_errors=args.max_errors)
+    program = parser.parse()
+
+    if pp_errors or lex_errors or parser.errors:
+        print("семантический анализ пропущен: сначала исправьте ошибки лексера/парсера", file=sys.stderr)
+        if args.verbose:
+            for e in pp_errors:
+                print(e.format(), file=sys.stderr)
+            for e in lex_errors:
+                print(e.format(), file=sys.stderr)
+            for e in parser.errors:
+                print(e.format(), file=sys.stderr)
+        return 1
+
+    sem = SemanticAnalyzer(file_name=str(src_path), source_text=source)
+    sem.analyze(program)
+    errors = sem.get_errors()
+    dec = sem.get_decorated_ast()
+    table = sem.get_symbol_table()
+
+    chunks: list[str] = []
+    if errors:
+        chunks.append("--- семантические ошибки ---")
+        for err in errors:
+            chunks.append(err.format().rstrip("\n"))
+    else:
+        chunks.append("--- семантические ошибки ---")
+        chunks.append("(нет)")
+    chunks.append("")
+    chunks.append("--- таблица символов ---")
+    chunks.append(format_symbol_table_text(table).rstrip("\n"))
+    chunks.append("")
+    chunks.append("--- аннотации типов ---")
+    chunks.append(format_type_annotations(program, dec.expr_types).rstrip("\n"))
+    chunks.append("")
+    chunks.append("--- AST с типами (текст) ---")
+    if args.show_types:
+        chunks.append(
+            format_decorated_ast_text(
+                program,
+                dec.expr_types,
+                symbol_refs=dec.symbol_refs,
+                call_refs=dec.call_refs,
+            ).rstrip("\n")
+        )
+    else:
+        chunks.append(format_decorated_ast_text(program, dec.expr_types).rstrip("\n"))
+    if args.verbose or args.report:
+        chunks.append("")
+        chunks.append("--- отчёт проверки ---")
+        chunks.append(
+            format_validation_report(
+                len(errors),
+                0,
+                table,
+                dec.expr_types,
+            ).rstrip("\n")
+        )
+
+    out_text = "\n".join(chunks) + "\n"
 
     if args.output:
         try:
             Path(args.output).write_text(out_text, encoding="utf-8")
         except OSError as e:
-            print(f"error: cannot write output file: {e}", file=sys.stderr)
+            print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
             return 2
     else:
         sys.stdout.write(out_text)
 
-    return 1 if had_errors else 0
+    if errors and args.verbose:
+        print(f"# итого: {len(errors)} семантических ошибок", file=sys.stderr)
+
+    return 1 if errors else 0
+
+
+def _cmd_symbols(args: argparse.Namespace) -> int:
+    src_path = Path(args.input)
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
+        return 2
+
+    source, pp_errors = _preprocess(source, args.preprocess)
+    tokens, lex_errors = _tokenize(source)
+    parser = Parser(tokens=tokens)
+    program = parser.parse()
+
+    if pp_errors or lex_errors or parser.errors:
+        print("symbols: пропущено из-за ошибок разбора", file=sys.stderr)
+        return 1
+
+    sem = SemanticAnalyzer(file_name=str(src_path))
+    sem.analyze(program)
+    table = sem.get_symbol_table()
+
+    if args.format == "json":
+        out_text = format_symbol_table_json(table)
+    else:
+        out_text = format_symbol_table_text(table)
+
+    if args.output:
+        try:
+            Path(args.output).write_text(out_text, encoding="utf-8")
+        except OSError as e:
+            print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
+            return 2
+    else:
+        sys.stdout.write(out_text)
+
+    return 1 if sem.get_errors() else 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -143,10 +304,68 @@ def main(argv: list[str] | None = None) -> int:
     p_parse.add_argument("--input", required=True)
     p_parse.add_argument("--ast-format", choices=["text", "dot", "json"], default="text")
     p_parse.add_argument("--output", default=None)
+    p_parse.add_argument("--render-png", action="store_true",
+                         help="If ast-format=dot and output is set, also run Graphviz to produce <output>.png")
     p_parse.add_argument("--verbose", action="store_true")
     p_parse.add_argument("--no-preprocess", action="store_false", dest="preprocess")
     p_parse.add_argument("--max-errors", type=int, default=None, metavar="N")
     p_parse.set_defaults(func=_cmd_parse, preprocess=True)
+
+    p_ll1 = sub.add_parser("ll1", help="Compute FIRST/FOLLOW and LL(1) table")
+    p_ll1.add_argument("--format", choices=["md", "dot"], default="md",
+                       help="Output format: markdown table or graphviz conflicts (.dot)")
+    p_ll1.add_argument("--output", default=None, help="Write to file instead of stdout")
+    p_ll1.add_argument("--grammar", default=None,
+                       help="Path to grammar.txt to read BNF section from (defaults to src/parser/grammar.txt)")
+
+    def _cmd_ll1(args: argparse.Namespace) -> int:
+        try:
+            _g, first, follow, table, conflicts = compute_all(args.grammar)
+        except Exception as e:
+            print(f"ошибка: не удалось загрузить грамматику: {e}", file=sys.stderr)
+            return 2
+        if args.format == "md":
+            parts: list[str] = []
+            parts.append("## FIRST\n")
+            for k in sorted(nt for nt in _g.nonterminals()):
+                parts.append(f"- {k}: {sorted(first[k])}\n")
+            parts.append("\n## FOLLOW\n")
+            for k in sorted(nt for nt in _g.nonterminals()):
+                parts.append(f"- {k}: {sorted(follow[k])}\n")
+            parts.append("\n## Predictive table (LL(1))\n\n")
+            parts.append(table_to_markdown(_g, table))
+            if conflicts:
+                parts.append("\n## Conflicts\n")
+                for c in conflicts:
+                    parts.append(f"- {c}\n")
+            out_text = "".join(parts)
+        else:
+            out_text = conflicts_to_dot(conflicts) if conflicts else conflicts_to_dot(["no conflicts"])
+
+        if args.output:
+            Path(args.output).write_text(out_text, encoding="utf-8")
+        else:
+            sys.stdout.write(out_text)
+        return 1 if conflicts else 0
+
+    p_ll1.set_defaults(func=_cmd_ll1)
+
+    p_check = sub.add_parser("check", help="Run semantic analysis (lex → parse → semantic)")
+    p_check.add_argument("--input", required=True)
+    p_check.add_argument("--output", default=None, help="Write full report to file")
+    p_check.add_argument("--verbose", action="store_true")
+    p_check.add_argument("--show-types", action="store_true", help="Include type annotations and decorated AST text")
+    p_check.add_argument("--report", action="store_true", help="Include validation report summary")
+    p_check.add_argument("--no-preprocess", action="store_false", dest="preprocess")
+    p_check.add_argument("--max-errors", type=int, default=None, metavar="N")
+    p_check.set_defaults(func=_cmd_check, preprocess=True)
+
+    p_sym = sub.add_parser("symbols", help="Dump symbol table after semantic analysis")
+    p_sym.add_argument("--input", required=True)
+    p_sym.add_argument("--format", choices=["text", "json"], default="text")
+    p_sym.add_argument("--output", default=None)
+    p_sym.add_argument("--no-preprocess", action="store_false", dest="preprocess")
+    p_sym.set_defaults(func=_cmd_symbols, preprocess=True)
 
     args = ap.parse_args(argv)
     return int(args.func(args))

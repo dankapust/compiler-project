@@ -1,0 +1,12 @@
+fn add(int a, int b) -> int {
+  return a + b;
+}
+
+fn main() -> int {
+  int x;
+  int y = x + 1;     // use-before-init
+  x = "hello";       // type mismatch
+  add(1);             // argument count mismatch
+  return y;
+}
+
