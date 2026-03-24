@@ -74,10 +74,16 @@ class Parser:
         return FunctionDecl(fn_tok.line, fn_tok.column, name_tok.lexeme, tuple(params), ret_type, body)
 
     def _struct_decl(self) -> StructDecl:
+
         st_tok = self._consume(TokenType.KW_STRUCT, "ожидалось ключевое слово 'struct'")
         name_tok = self._consume(TokenType.IDENTIFIER, "ожидалось имя структуры")
         self._known_types.add(name_tok.lexeme)
         self._consume(TokenType.LBRACE, "ожидалось '{' после имени структуры")
+
+        st_tok = self._consume(TokenType.KW_STRUCT, "expected 'struct'")
+        name_tok = self._consume(TokenType.IDENTIFIER, "expected struct name")
+        self._known_types.add(name_tok.lexeme)
+        self._consume(TokenType.LBRACE, "expected '{' after struct name")
         fields: list[VarDeclStmt] = []
         while not self._check(TokenType.RBRACE) and not self._is_at_end():
             fields.append(self._var_decl())
@@ -296,7 +302,11 @@ class Parser:
             operand = self._unary()
             if isinstance(operand, IdentifierExpr):
                 return IncDecExpr(op_tok.line, op_tok.column, operand.name, op_tok.lexeme, True)
+
             self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
+
+            self._error_at(op_tok.line, op_tok.column, "invalid increment/decrement target")
+
             return operand
         if self._peek().type in (TokenType.MINUS, TokenType.BANG):
             op_tok = self._advance()
@@ -310,7 +320,11 @@ class Parser:
             op_tok = self._advance()
             if isinstance(expr, IdentifierExpr):
                 return IncDecExpr(expr.line, expr.column, expr.name, op_tok.lexeme, False)
+
             self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
+
+            self._error_at(op_tok.line, op_tok.column, "invalid increment/decrement target")
+
         return expr
 
     def _primary(self) -> ASTNode:

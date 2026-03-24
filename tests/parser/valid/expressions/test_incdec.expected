@@ -10,4 +10,8 @@ Program [1:1]:
         ExprStmt: (x--) [5:5]
         ExprStmt: (--x) [6:5]
         VarDeclStmt: int y = ((x++) + (++x)) [7:5]
+
 ОБРАТНЫЙ_ЦИКЛ: OK
+
+ROUNDTRIP: OK
+

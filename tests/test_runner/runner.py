@@ -16,8 +16,10 @@ from parser.parser import Parser  # noqa: E402
 from parser.pretty import pretty_print  # noqa: E402
 from parser.codec import node_to_jsonable, from_jsonable  # noqa: E402
 from parser.ll1_tables import compute_all, table_to_markdown  # noqa: E402
+
 from semantic.analyzer import SemanticAnalyzer  # noqa: E402
 from semantic.output import format_symbol_table_text, format_type_annotations  # noqa: E402
+
 
 
 @dataclass(frozen=True)
@@ -187,6 +189,7 @@ def _run_parser_case(src_path: Path, update: bool) -> CaseResult:
     return CaseResult(name=str(src_path), ok=False, diff=diff)
 
 
+
 def _run_semantic_case(src_path: Path, update: bool) -> CaseResult:
     expected_path = src_path.with_suffix(".expected")
     actual = _semantic_pipeline_text(src_path.read_text(encoding="utf-8"), src_name="test.src")
@@ -234,7 +237,10 @@ def _run_ll1_case(grammar_path: Path, update: bool) -> CaseResult:
     try:
         actual = _ll1_md_text(grammar_path)
     except Exception as e:
+
         actual = f"ОШИБКА не удалось загрузить грамматику: {e}\n"
+
+        actual = f"ERROR failed to load grammar: {e}\n"
 
     if update or not expected_path.exists():
         expected_path.write_text(actual, encoding="utf-8")
@@ -260,7 +266,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tests.test_runner")
     ap.add_argument("--update", action="store_true",
                     help="Write/update all expected golden files from current output")
+
     ap.add_argument("--only", choices=["all", "lexer", "parser", "preprocessor", "ll1", "semantic"], default="all",
+
+    ap.add_argument("--only", choices=["all", "lexer", "parser", "preprocessor", "ll1"], default="all",
+
                     help="Run only specific test category")
     args = ap.parse_args(argv)
 
@@ -319,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
         for c in cases:
             results.append(_run_ll1_case(c, update=args.update))
 
+
     if args.only in ("all", "semantic"):
         sem_root = root / "tests" / "semantic"
         cases = sorted(sem_root.rglob("*.src"))
@@ -327,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         for c in cases:
             results.append(_run_semantic_case(c, update=args.update))
+
 
     if not results:
         print("No test cases found.", file=sys.stderr)

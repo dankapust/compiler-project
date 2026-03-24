@@ -171,7 +171,9 @@ python -m tests.test_runner --only lexer
 python -m tests.test_runner --only parser
 python -m tests.test_runner --only preprocessor
 python -m tests.test_runner --only ll1
+
 python -m tests.test_runner --only semantic
+
 ```
 
 **Формат вывода токенов (лексер):**

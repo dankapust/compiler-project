@@ -14,6 +14,7 @@ from parser.pretty import pretty_print
 from parser.dot import to_dot
 from parser.codec import node_to_jsonable
 from parser.ll1_tables import compute_all, table_to_markdown, conflicts_to_dot
+
 from semantic.analyzer import SemanticAnalyzer
 from semantic.output import (
     format_decorated_ast_text,
@@ -130,6 +131,7 @@ def _cmd_parse(args: argparse.Namespace) -> int:
         try:
             out_path = Path(args.output)
             out_path.write_text(out_text, encoding="utf-8")
+
         except OSError as e:
             print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
             return 2
@@ -239,11 +241,13 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if args.output:
         try:
             Path(args.output).write_text(out_text, encoding="utf-8")
+
         except OSError as e:
             print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
             return 2
     else:
         sys.stdout.write(out_text)
+
 
     if errors and args.verbose:
         print(f"# итого: {len(errors)} семантических ошибок", file=sys.stderr)
@@ -288,6 +292,35 @@ def _cmd_symbols(args: argparse.Namespace) -> int:
 
     return 1 if sem.get_errors() else 0
 
+    if args.render_png:
+        if args.ast_format != "dot":
+            print("error: --render-png requires --ast-format dot", file=sys.stderr)
+            return 2
+        if not args.output:
+            print("error: --render-png requires --output <file.dot>", file=sys.stderr)
+            return 2
+
+        dot_path = Path(args.output)
+        png_path = dot_path.with_suffix(".png")
+        try:
+            subprocess.run(
+                ["dot", "-Tpng", str(dot_path), "-o", str(png_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except FileNotFoundError:
+            print("error: Graphviz 'dot' not found in PATH (install Graphviz to render PNG)", file=sys.stderr)
+            return 2
+        except subprocess.CalledProcessError as e:
+            msg = e.stderr.strip() if e.stderr else "dot failed"
+            print(f"error: dot failed: {msg}", file=sys.stderr)
+            return 2
+
+    return 1 if had_errors else 0
+
+
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="compiler")
@@ -322,7 +355,10 @@ def main(argv: list[str] | None = None) -> int:
         try:
             _g, first, follow, table, conflicts = compute_all(args.grammar)
         except Exception as e:
+
             print(f"ошибка: не удалось загрузить грамматику: {e}", file=sys.stderr)
+
+            print(f"error: failed to load grammar: {e}", file=sys.stderr)
             return 2
         if args.format == "md":
             parts: list[str] = []
@@ -349,6 +385,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if conflicts else 0
 
     p_ll1.set_defaults(func=_cmd_ll1)
+
 
     p_check = sub.add_parser("check", help="Run semantic analysis (lex → parse → semantic)")
     p_check.add_argument("--input", required=True)
