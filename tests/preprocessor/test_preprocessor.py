@@ -8,7 +8,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 
-from preprocessor.preprocessor import Preprocessor  # noqa: E402
+from preprocessor.preprocessor import Preprocessor  
 
 
 def test_comment_removal_single_line() -> None:
@@ -41,7 +41,7 @@ def test_define_macro() -> None:
     """PRE-2: #define NAME value."""
     pp = Preprocessor("#define MAX 100\nint x = MAX;\n")
     result = pp.process()
-    assert "MAX" not in result or "define" in result  # MAX should be expanded
+    assert "MAX" not in result or "define" in result  
     assert "100" in result
 
 
@@ -92,7 +92,7 @@ def test_unterminated_comment_error() -> None:
     pp = Preprocessor("/* never ends\n")
     result = pp.process()
     assert len(pp.errors) == 1
-    assert "unterminated" in pp.errors[0].message.lower()
+    assert "незавершённый" in pp.errors[0].message.lower()
 
 
 def test_macro_recursion_detected() -> None:
@@ -100,7 +100,7 @@ def test_macro_recursion_detected() -> None:
     pp = Preprocessor("#define A B\n#define B A\nint x = A;\n")
     result = pp.process()
     assert len(pp.errors) >= 1
-    assert "recursion" in pp.errors[0].message.lower()
+    assert "рекурс" in pp.errors[0].message.lower()
 
 
 def test_line_count_preserved() -> None:

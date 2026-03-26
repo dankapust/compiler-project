@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "global",
+    "symbols": {
+      "main": {
+        "kind": "FUNCTION",
+        "type": "fn() -> void",
+        "line": 1,
+        "column": 1,
+        "initialized": true,
+        "stack_offset": null,
+        "size_bytes": null,
+        "param_types": [],
+        "return_type": "void"
+      }
+    }
+  }
+]

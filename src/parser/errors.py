@@ -25,7 +25,7 @@ class ErrorMetrics:
 
     def format_summary(self) -> str:
         return (
-            f"errors reported: {self.reported_count}, "
-            f"recovery points: {self.recovered_count}, "
-            f"cascade prevented: {self.cascade_prevented_count}"
+            f"сообщено об ошибках: {self.reported_count}, "
+            f"точек восстановления: {self.recovered_count}, "
+            f"предотвращено каскадов: {self.cascade_prevented_count}"
         )

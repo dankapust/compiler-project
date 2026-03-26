@@ -4,7 +4,7 @@ from typing import Any
 
 from parser.ast import (
     ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
+    LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -109,6 +109,13 @@ def node_to_jsonable(node: ASTNode) -> dict[str, Any]:
                 "line": node.line, "column": node.column,
                 "name": node.name,
             }
+        case MemberAccessExpr():
+            return {
+                "node": "MemberAccessExpr",
+                "line": node.line, "column": node.column,
+                "base": node_to_jsonable(node.base),
+                "member": node.member,
+            }
         case BinaryExpr():
             return {
                 "node": "BinaryExpr",
@@ -135,7 +142,7 @@ def node_to_jsonable(node: ASTNode) -> dict[str, Any]:
             return {
                 "node": "AssignmentExpr",
                 "line": node.line, "column": node.column,
-                "target": node.target,
+                "target": node_to_jsonable(node.target),
                 "operator": node.operator,
                 "value": node_to_jsonable(node.value),
             }
@@ -143,7 +150,7 @@ def node_to_jsonable(node: ASTNode) -> dict[str, Any]:
             return {
                 "node": "IncDecExpr",
                 "line": node.line, "column": node.column,
-                "target": node.target,
+                "target": node_to_jsonable(node.target),
                 "operator": node.operator,
                 "prefix": node.prefix,
             }
@@ -193,6 +200,8 @@ def from_jsonable(data: dict[str, Any]) -> ASTNode:
             return LiteralExpr(line, col, data["value"], data["type_tag"])
         case "IdentifierExpr":
             return IdentifierExpr(line, col, data["name"])
+        case "MemberAccessExpr":
+            return MemberAccessExpr(line, col, from_jsonable(data["base"]), data["member"])
         case "BinaryExpr":
             return BinaryExpr(line, col, from_jsonable(data["left"]), data["operator"], from_jsonable(data["right"]))
         case "UnaryExpr":
@@ -200,7 +209,7 @@ def from_jsonable(data: dict[str, Any]) -> ASTNode:
         case "CallExpr":
             return CallExpr(line, col, data["callee"], tuple(from_jsonable(a) for a in data["arguments"]))
         case "AssignmentExpr":
-            return AssignmentExpr(line, col, data["target"], data["operator"], from_jsonable(data["value"]))
+            return AssignmentExpr(line, col, from_jsonable(data["target"]), data["operator"], from_jsonable(data["value"]))
         case "IncDecExpr":
-            return IncDecExpr(line, col, data["target"], data["operator"], bool(data["prefix"]))
+            return IncDecExpr(line, col, from_jsonable(data["target"]), data["operator"], bool(data["prefix"]))
     raise ValueError(f"unknown node type: {data.get('node')}")

@@ -15,4 +15,4 @@ Program [1:1]:
     Body:
       Block [9:31]:
         ReturnStmt [10:5]: x
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

@@ -1,4 +1,4 @@
-ERROR 2:5 invalid assignment target
+ОШИБКА 2:5 недопустимая цель присваивания
 AST:
 Program [1:1]:
   FunctionDecl: main -> void [1:1]
@@ -6,4 +6,4 @@ Program [1:1]:
     Body:
       Block [1:11]:
         EmptyStmt [2:14]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

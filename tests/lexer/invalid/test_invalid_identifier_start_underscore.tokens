@@ -1,2 +1,2 @@
-1:1 ERROR "_x" identifier cannot start with underscore
+1:1 ERROR "_x" идентификатор не может начинаться с подчёркивания
 4:1 END_OF_FILE ""

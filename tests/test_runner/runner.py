@@ -9,13 +9,15 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 
-from lexer.scanner import Scanner  # noqa: E402
-from lexer.token import TokenType  # noqa: E402
-from preprocessor.preprocessor import Preprocessor  # noqa: E402
-from parser.parser import Parser  # noqa: E402
-from parser.pretty import pretty_print  # noqa: E402
-from parser.codec import node_to_jsonable, from_jsonable  # noqa: E402
-from parser.ll1_tables import compute_all, table_to_markdown  # noqa: E402
+from lexer.scanner import Scanner  
+from lexer.token import TokenType  
+from preprocessor.preprocessor import Preprocessor  
+from parser.parser import Parser  
+from parser.pretty import pretty_print  
+from parser.codec import node_to_jsonable, from_jsonable  
+from parser.ll1_tables import compute_all, table_to_markdown  
+from semantic.analyzer import SemanticAnalyzer  
+from semantic.output import format_symbol_table_text, format_type_annotations  
 
 
 @dataclass(frozen=True)
@@ -62,23 +64,78 @@ def _parse_text(text: str, use_preprocessor: bool = True) -> str:
 
     lines: list[str] = []
     for e in pp_errors:
-        lines.append(f"ERROR {e.format()}")
+        lines.append(f"ОШИБКА {e.format()}")
     for e in lex_errors:
-        lines.append(f"ERROR {e.format()}")
+        lines.append(f"ОШИБКА {e.format()}")
     for e in p.errors:
-        lines.append(f"ERROR {e.format()}")
+        lines.append(f"ОШИБКА {e.format()}")
     lines.append("AST:")
     lines.append(pretty_print(program).rstrip("\n"))
 
     try:
         program2 = from_jsonable(node_to_jsonable(program))
         if program2 != program:
-            lines.append("ERROR round-trip mismatch: AST != decode(encode(AST))")
+            lines.append("ОШИБКА несовпадение round-trip: AST != decode(encode(AST))")
         else:
-            lines.append("ROUNDTRIP: OK")
+            lines.append("ОБРАТНЫЙ_ЦИКЛ: OK")
     except Exception as ex:
-        lines.append(f"ERROR round-trip failed: {ex}")
+        lines.append(f"ОШИБКА сбой round-trip: {ex}")
 
+    return "\n".join(lines) + "\n"
+
+
+def _semantic_pipeline_text(text: str, src_name: str = "test.src", use_preprocessor: bool = True) -> str:
+    processed = text
+    pp_errors: list = []
+    if use_preprocessor:
+        pp = Preprocessor(text)
+        processed = pp.process()
+        pp_errors = pp.errors
+
+    sc = Scanner(processed)
+    toks = []
+    while True:
+        t = sc.next_token()
+        toks.append(t)
+        if t.type == TokenType.END_OF_FILE:
+            break
+    lex_errors = sc.errors
+    lines: list[str] = []
+    for e in pp_errors:
+        lines.append(f"ЭТАП {e.format().strip()}")
+    for e in lex_errors:
+        lines.append(f"ЭТАП {e.format().strip()}")
+    p = Parser(tokens=toks)
+    program = p.parse()
+    for e in p.errors:
+        lines.append(f"ЭТАП {e.format().strip()}")
+    if p.errors or lex_errors or pp_errors:
+        lines.append("СЕМАНТИКА: ПРОПУЩЕНО")
+        return "\n".join(lines) + "\n"
+
+    sem = SemanticAnalyzer(file_name=src_name, source_text=processed)
+    sem.analyze(program)
+    dec = sem.get_decorated_ast()
+    lines.append("СЕМАНТИЧЕСКИЕ_ОШИБКИ:")
+    errs = sem.get_errors()
+    if errs:
+        for err in errs:
+            lines.append(err.format().strip())
+    else:
+        lines.append("(нет)")
+    lines.append("ТАБЛИЦА_СИМВОЛОВ:")
+    lines.append(format_symbol_table_text(sem.get_symbol_table()).rstrip("\n"))
+    lines.append("АННОТАЦИИ_ТИПОВ:")
+    lines.append(format_type_annotations(program, dec.expr_types).rstrip("\n"))
+    lines.append("ОБРАТНЫЙ_ЦИКЛ_JSON:")
+    try:
+        program2 = from_jsonable(node_to_jsonable(program))
+        if program2 == program:
+            lines.append("кодирование AST: OK")
+        else:
+            lines.append("кодирование AST: НЕСОВПАДЕНИЕ")
+    except Exception as ex:
+        lines.append(f"кодирование AST: СБОЙ {ex}")
     return "\n".join(lines) + "\n"
 
 
@@ -130,6 +187,30 @@ def _run_parser_case(src_path: Path, update: bool) -> CaseResult:
     return CaseResult(name=str(src_path), ok=False, diff=diff)
 
 
+def _run_semantic_case(src_path: Path, update: bool) -> CaseResult:
+    expected_path = src_path.with_suffix(".expected")
+    actual = _semantic_pipeline_text(src_path.read_text(encoding="utf-8"), src_name="test.src")
+
+    if update or not expected_path.exists():
+        expected_path.write_text(actual, encoding="utf-8")
+        return CaseResult(name=str(src_path), ok=True, diff=None)
+
+    expected = expected_path.read_text(encoding="utf-8")
+    if expected == actual:
+        return CaseResult(name=str(src_path), ok=True, diff=None)
+
+    diff = "".join(
+        difflib.unified_diff(
+            expected.splitlines(keepends=True),
+            actual.splitlines(keepends=True),
+            fromfile=str(expected_path),
+            tofile=str(src_path) + " (actual)",
+        )
+    )
+    src_path.with_suffix(".expected.actual").write_text(actual, encoding="utf-8")
+    return CaseResult(name=str(src_path), ok=False, diff=diff)
+
+
 def _ll1_md_text(grammar_path: Path) -> str:
     _g, first, follow, table, conflicts = compute_all(grammar_path)
     parts: list[str] = []
@@ -153,7 +234,7 @@ def _run_ll1_case(grammar_path: Path, update: bool) -> CaseResult:
     try:
         actual = _ll1_md_text(grammar_path)
     except Exception as e:
-        actual = f"ERROR failed to load grammar: {e}\n"
+        actual = f"ОШИБКА не удалось загрузить грамматику: {e}\n"
 
     if update or not expected_path.exists():
         expected_path.write_text(actual, encoding="utf-8")
@@ -179,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tests.test_runner")
     ap.add_argument("--update", action="store_true",
                     help="Write/update all expected golden files from current output")
-    ap.add_argument("--only", choices=["all", "lexer", "parser", "preprocessor", "ll1"], default="all",
+    ap.add_argument("--only", choices=["all", "lexer", "parser", "preprocessor", "ll1", "semantic"], default="all",
                     help="Run only specific test category")
     args = ap.parse_args(argv)
 
@@ -237,6 +318,15 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         for c in cases:
             results.append(_run_ll1_case(c, update=args.update))
+
+    if args.only in ("all", "semantic"):
+        sem_root = root / "tests" / "semantic"
+        cases = sorted(sem_root.rglob("*.src"))
+        if not cases:
+            print("No semantic test cases found.", file=sys.stderr)
+            return 2
+        for c in cases:
+            results.append(_run_semantic_case(c, update=args.update))
 
     if not results:
         print("No test cases found.", file=sys.stderr)

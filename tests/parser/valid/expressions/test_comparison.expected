@@ -10,4 +10,4 @@ Program [1:1]:
         VarDeclStmt: bool d = (3 >= 2) [5:5]
         VarDeclStmt: bool e = (4 <= 5) [6:5]
         VarDeclStmt: bool f = (6 > 0) [7:5]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

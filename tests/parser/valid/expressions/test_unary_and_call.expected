@@ -13,4 +13,4 @@ Program [1:1]:
         VarDeclStmt: bool b = (!true) [7:5]
         VarDeclStmt: int c = negate(10) [8:5]
         VarDeclStmt: int d = negate((1 + 2)) [9:5]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

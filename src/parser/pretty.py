@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
+    LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -129,6 +129,9 @@ class _PrettyPrinter(ASTVisitor):
     def visit_identifier(self, node: IdentifierExpr) -> None:
         self._emit(f"Identifier: {node.name}")
 
+    def visit_member_access(self, node: MemberAccessExpr) -> None:
+        self._emit(f"MemberAccess: {_expr_str(node)}")
+
     def visit_binary(self, node: BinaryExpr) -> None:
         self._emit(f"Binary: {_expr_str(node)}")
 
@@ -167,6 +170,8 @@ def _expr_str(node: ASTNode) -> str:
             return _literal_repr(node)
         case IdentifierExpr():
             return node.name
+        case MemberAccessExpr():
+            return f"{_expr_str(node.base)}.{node.member}"
         case BinaryExpr():
             return f"({_expr_str(node.left)} {node.operator} {_expr_str(node.right)})"
         case UnaryExpr():
@@ -175,9 +180,10 @@ def _expr_str(node: ASTNode) -> str:
             args = ", ".join(_expr_str(a) for a in node.arguments)
             return f"{node.callee}({args})"
         case AssignmentExpr():
-            return f"({node.target} {node.operator} {_expr_str(node.value)})"
+            return f"({_expr_str(node.target)} {node.operator} {_expr_str(node.value)})"
         case IncDecExpr():
+            tgt = _expr_str(node.target)
             if node.prefix:
-                return f"({node.operator}{node.target})"
-            return f"({node.target}{node.operator})"
+                return f"({node.operator}{tgt})"
+            return f"({tgt}{node.operator})"
     return repr(node)

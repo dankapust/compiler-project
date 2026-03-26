@@ -1,0 +1,4 @@
+fn f(int a) { }
+fn main() {
+  f(1, 2);
+}

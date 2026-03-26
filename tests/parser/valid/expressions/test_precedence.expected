@@ -9,4 +9,4 @@ Program [1:1]:
         VarDeclStmt: int c = ((1 + 2) + 3) [4:5]
         VarDeclStmt: bool d = ((1 < 2) && (3 > 1)) [5:5]
         VarDeclStmt: bool e = (true || (false && true)) [6:5]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

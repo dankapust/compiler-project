@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
-    LiteralExpr, IdentifierExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
+    LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
     BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
@@ -173,6 +173,13 @@ class _DotGenerator(ASTVisitor):
         self._add_node(nid, f"Identifier\\n{node.name}", _EXPR_COLOR)
         return nid
 
+    def visit_member_access(self, node: MemberAccessExpr) -> str:
+        nid = self._new_id()
+        self._add_node(nid, f"Member\\n.{node.member}", _EXPR_COLOR)
+        bid = node.base.accept(self)
+        self._add_edge(nid, bid, "base")
+        return nid
+
     def visit_binary(self, node: BinaryExpr) -> str:
         nid = self._new_id()
         self._add_node(nid, f"Binary\\n{node.operator}", _EXPR_COLOR)
@@ -199,13 +206,17 @@ class _DotGenerator(ASTVisitor):
 
     def visit_assignment(self, node: AssignmentExpr) -> str:
         nid = self._new_id()
-        self._add_node(nid, f"Assignment\\n{node.target} {node.operator}", _EXPR_COLOR)
+        self._add_node(nid, f"Assignment\\n{node.operator}", _EXPR_COLOR)
+        tid = node.target.accept(self)
+        self._add_edge(nid, tid, "target")
         vid = node.value.accept(self)
-        self._add_edge(nid, vid)
+        self._add_edge(nid, vid, "value")
         return nid
 
     def visit_incdec(self, node: IncDecExpr) -> str:
         nid = self._new_id()
-        form = f"{node.operator}{node.target}" if node.prefix else f"{node.target}{node.operator}"
+        form = f"{node.operator}(target)" if node.prefix else f"(target){node.operator}"
         self._add_node(nid, f"IncDec\\n{form}", _EXPR_COLOR)
+        tid = node.target.accept(self)
+        self._add_edge(nid, tid, "target")
         return nid

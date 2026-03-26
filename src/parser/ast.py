@@ -39,6 +39,15 @@ class IdentifierExpr(ASTNode):
 
 
 @dataclass(frozen=True)
+class MemberAccessExpr(ASTNode):
+    base: ASTNode
+    member: str
+
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_member_access(self)
+
+
+@dataclass(frozen=True)
 class BinaryExpr(ASTNode):
     left: ASTNode
     operator: str
@@ -68,7 +77,7 @@ class CallExpr(ASTNode):
 
 @dataclass(frozen=True)
 class AssignmentExpr(ASTNode):
-    target: str
+    target: ASTNode
     operator: str
     value: ASTNode
 
@@ -78,7 +87,7 @@ class AssignmentExpr(ASTNode):
 
 @dataclass(frozen=True)
 class IncDecExpr(ASTNode):
-    target: str
+    target: ASTNode
     operator: str
     prefix: bool
 
@@ -189,6 +198,7 @@ class ASTVisitor:
     def visit_program(self, node: ProgramNode) -> Any: ...
     def visit_literal(self, node: LiteralExpr) -> Any: ...
     def visit_identifier(self, node: IdentifierExpr) -> Any: ...
+    def visit_member_access(self, node: MemberAccessExpr) -> Any: ...
     def visit_binary(self, node: BinaryExpr) -> Any: ...
     def visit_unary(self, node: UnaryExpr) -> Any: ...
     def visit_call(self, node: CallExpr) -> Any: ...

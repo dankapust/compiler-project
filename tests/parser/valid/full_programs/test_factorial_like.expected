@@ -15,4 +15,4 @@ Program [1:1]:
     Body:
       Block [8:11]:
         VarDeclStmt: int result = factorial(5) [9:5]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

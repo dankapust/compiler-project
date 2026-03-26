@@ -80,7 +80,7 @@ class Preprocessor:
                         value = raw_value.strip()
                         if not self._valid_macro_name(name):
                             self.errors.append(
-                                PreprocessorError(f"invalid macro name: {name}", line_num, 1)
+                                PreprocessorError(f"недопустимое имя макроса: {name}", line_num, 1)
                             )
                         else:
                             self._macros[name] = value
@@ -119,7 +119,7 @@ class Preprocessor:
 
         if skip_depth > 0:
             self.errors.append(
-                PreprocessorError("unmatched #ifdef/#ifndef without #endif", len(lines), 1)
+                PreprocessorError("непарные #ifdef/#ifndef без #endif", len(lines), 1)
             )
 
         return "\n".join(output_lines)
@@ -209,7 +209,7 @@ class Preprocessor:
                         j += 1
                 if depth > 0:
                     self.errors.append(
-                        PreprocessorError("unterminated block comment", start_line, start_col)
+                        PreprocessorError("незавершённый блочный комментарий", start_line, start_col)
                     )
                 i = j
                 continue
@@ -262,7 +262,7 @@ class Preprocessor:
                     if name in expansion_stack:
                         self.errors.append(
                             PreprocessorError(
-                                f"macro recursion detected: {name}",
+                                f"рекурсия макроса: {name}",
                                 source[:start].count("\n") + 1,
                                 (start - source[:start].rfind("\n")) if "\n" in source[:start] else start + 1,
                             )

@@ -22,8 +22,8 @@ _KEYWORDS: dict[str, TokenType] = {
 _BOOL_LITERALS: dict[str, bool] = {"true": True, "false": False}
 
 _OPERATOR_TABLE = {
-    "&": ([("&", TokenType.AND_AND)], None, "unexpected character '&' (did you mean '&&'?)"),
-    "|": ([("|", TokenType.OR_OR)], None, "unexpected character '|' (did you mean '||'?)"),
+    "&": ([("&", TokenType.AND_AND)], None, "неожиданный символ '&' (имелось в виду '&&'?)"),
+    "|": ([("|", TokenType.OR_OR)], None, "неожиданный символ '|' (имелось в виду '||'?)"),
     "=": ([("=", TokenType.EQUAL_EQUAL)], TokenType.ASSIGN, None),
     "!": ([("=", TokenType.BANG_EQUAL)], TokenType.BANG, None),
     "<": ([("=", TokenType.LESS_EQUAL)], TokenType.LESS, None),
@@ -39,6 +39,7 @@ _OPERATOR_TABLE = {
     "}": ([], TokenType.RBRACE, None),
     "[": ([], TokenType.LBRACKET, None),
     "]": ([], TokenType.RBRACKET, None),
+    ".": ([], TokenType.DOT, None),
     ",": ([], TokenType.COMMA, None),
     ";": ([], TokenType.SEMICOLON, None),
 }
@@ -119,9 +120,9 @@ class Scanner:
         lex = m.group()
         self._advance_by(len(lex))
         if lex[0] == "_":
-            return self._err(lex, "identifier cannot start with underscore")
+            return self._err(lex, "идентификатор не может начинаться с подчёркивания")
         if len(lex) > 255:
-            return self._err(lex, "identifier exceeds maximum length (255)")
+            return self._err(lex, "идентификатор длиннее 255 символов")
         if lex in _BOOL_LITERALS:
             return self._tok(TokenType.BOOL_LITERAL, lex, _BOOL_LITERALS[lex])
         if lex == "null":
@@ -138,16 +139,16 @@ class Scanner:
             try:
                 val = int(lex)
             except ValueError:
-                return self._err(lex, "malformed integer literal")
+                return self._err(lex, "некорректная целочисленная константа")
             if not _INT32_MIN <= val <= _INT32_MAX:
-                return self._err(lex, "integer literal out of 32-bit range")
+                return self._err(lex, "целочисленная константа вне диапазона 32 бит")
             return self._tok(TokenType.INT_LITERAL, lex, val)
         if dots == 1:
             try:
                 return self._tok(TokenType.FLOAT_LITERAL, lex, float(lex))
             except ValueError:
-                return self._err(lex, "malformed float literal")
-        return self._err(lex, "malformed number literal")
+                return self._err(lex, "некорректная константа с плавающей точкой")
+        return self._err(lex, "некорректная числовая константа")
 
     def _scan_string(self) -> Token:
         parts: list[str] = []
@@ -157,13 +158,13 @@ class Scanner:
                 parts.append(m.group())
                 self._advance_by(len(m.group()))
             if self._i >= self._n:
-                return self._err(self._lex(), "unterminated string literal")
+                return self._err(self._lex(), "незавершённая строковая константа")
             p = self._src[self._i]
             if p == '"':
                 self._advance()
                 return self._tok(TokenType.STRING_LITERAL, self._lex(), "".join(parts))
             if p in _NEWLINES:
-                return self._err(self._lex(), "unterminated string literal")
+                return self._err(self._lex(), "незавершённая строковая константа")
             if p == "\\":
                 self._advance()
                 if self._i >= self._n:
@@ -173,7 +174,7 @@ class Scanner:
                     self._advance()
                     parts.append(_UNESCAPE[esc])
                 else:
-                    self._add_error(self._line, self._col, f"unknown escape sequence \\{esc}")
+                    self._add_error(self._line, self._col, f"неизвестная escape-последовательность \\{esc}")
                     self._advance()
                     parts.append(esc)
 
@@ -188,7 +189,7 @@ class Scanner:
                 return self._tok(single_tt, c, None)
             if err_msg is not None:
                 return self._err(c, err_msg)
-        return self._err(c, f"invalid character: {repr(c)}")
+        return self._err(c, f"недопустимый символ: {repr(c)}")
 
     def _skip_whitespace_and_comments(self) -> None:
         src, n = self._src, self._n
@@ -225,9 +226,9 @@ class Scanner:
         depth = 1
         while depth > 0:
             if self._i >= n:
-                self._add_error(sl, sc, "unterminated block comment")
+                self._add_error(sl, sc, "незавершённый блочный комментарий")
                 self._pending_error = Token(
-                    TokenType.ERROR, "/*", sl, sc, "unterminated block comment",
+                    TokenType.ERROR, "/*", sl, sc, "незавершённый блочный комментарий",
                 )
                 return
             ch = src[self._i]

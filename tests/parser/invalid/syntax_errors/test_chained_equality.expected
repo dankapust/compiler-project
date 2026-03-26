@@ -1,4 +1,4 @@
-ERROR 2:21 chained equality comparison is not allowed (non-associative)
+ОШИБКА 2:21 цепочка операций сравнения на равенство недопустима (неассоциативно)
 AST:
 Program [1:1]:
   FunctionDecl: main -> void [1:1]
@@ -6,4 +6,4 @@ Program [1:1]:
     Body:
       Block [1:11]:
         EmptyStmt [2:25]
-ROUNDTRIP: OK
+ОБРАТНЫЙ_ЦИКЛ: OK

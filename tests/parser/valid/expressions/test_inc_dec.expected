@@ -1,0 +1,12 @@
+AST:
+Program [1:1]:
+  FunctionDecl: main -> void [1:1]
+    Parameters: []
+    Body:
+      Block [1:11]:
+        VarDeclStmt: int i = 0 [2:3]
+        ExprStmt: (i++) [3:3]
+        ExprStmt: (++i) [4:3]
+        ExprStmt: (i--) [5:3]
+        ExprStmt: (--i) [6:3]
+ОБРАТНЫЙ_ЦИКЛ: OK
