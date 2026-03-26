@@ -7,9 +7,7 @@ from parser.ast import (
     ProgramNode,
     LiteralExpr,
     IdentifierExpr,
-
     MemberAccessExpr,
-
     BinaryExpr,
     UnaryExpr,
     CallExpr,
@@ -71,7 +69,6 @@ class SemanticAnalyzer:
         self._current_fn: str = ""
         self._local_stack_next: int = 0
 
-
     def _snapshot_initialized(self) -> dict[int, tuple[SymbolInfo, bool]]:
         snap: dict[int, tuple[SymbolInfo, bool]] = {}
         for _, symbols in self._table.dump_scopes():
@@ -93,7 +90,6 @@ class SemanticAnalyzer:
             then_init = then_state.get(sid, (sym, before_init))[1]
             else_init = else_state.get(sid, (sym, before_init))[1]
             sym.initialized = before_init or (then_init and else_init)
-
 
     def analyze(self, ast: ProgramNode) -> None:
         self._program = ast
@@ -281,7 +277,6 @@ class SemanticAnalyzer:
             kind=SymbolKind.VARIABLE,
             line=node.line,
             column=node.column,
-
             
             
             initialized=False,
@@ -375,7 +370,6 @@ class SemanticAnalyzer:
                 else:
                     else_state = before
                 self._merge_initialized_after_if(before, then_state, else_state)
-
             case WhileStmt(condition=c, body=b):
                 ct = self._check_expr(c)
                 if ct.kind != TypeKind.BOOL and ct.kind != TypeKind.ERROR:
@@ -387,12 +381,10 @@ class SemanticAnalyzer:
                         expected="bool",
                         found=str(ct),
                     )
-
                 before = self._snapshot_initialized()
                 self._analyze_statement(b)
                 
                 self._restore_initialized(before)
-
             case ForStmt(init=init, condition=cond, update=upd, body=body):
                 if self._table.scope_depth() >= 64:
                     self._err("scope_error", "превышена максимальная глубина вложенности областей видимости", node.line, node.column)
@@ -418,14 +410,12 @@ class SemanticAnalyzer:
                     if loop_var is not None:
                         ok = (
                             isinstance(upd, AssignmentExpr)
-
                             and isinstance(upd.target, IdentifierExpr)
                             and upd.target.name == loop_var
                         ) or (
                             isinstance(upd, IncDecExpr)
                             and isinstance(upd.target, IdentifierExpr)
                             and upd.target.name == loop_var
-
                         )
                         if not ok:
                             self._err(
@@ -490,6 +480,8 @@ class SemanticAnalyzer:
             kind=SymbolKind.VARIABLE,
             line=node.line,
             column=node.column,
+            
+            
             initialized=False,
             stack_offset=off,
             size_bytes=sz,
@@ -511,7 +503,6 @@ class SemanticAnalyzer:
             sym = self._table.lookup_local(node.name)
             if sym:
                 sym.initialized = True
-
 
     def _resolve_lvalue_target(self, target: ASTNode) -> tuple[Type, SymbolInfo | None]:
         match target:
@@ -668,7 +659,6 @@ class SemanticAnalyzer:
                             self._folded[id(node)] = -v
                         except Exception:
                             pass
-
                     return ut
                 if op == "!":
                     ut = unary_bang_type(ct)
@@ -682,13 +672,10 @@ class SemanticAnalyzer:
                             found=str(ct),
                         )
                         return ERROR_T
-
                     if id(child) in self._folded and ut.kind == TypeKind.BOOL:
                         v = self._folded[id(child)]
                         if isinstance(v, bool):
                             self._folded[id(node)] = (not v)
-
-
                     return ut
                 return ERROR_T
             case BinaryExpr(left=left, operator=op, right=right):
@@ -705,13 +692,11 @@ class SemanticAnalyzer:
                             found=f"{lt}, {rt}",
                         )
                         return ERROR_T
-
                     if id(left) in self._folded and id(right) in self._folded:
                         lv = self._folded[id(left)]
                         rv = self._folded[id(right)]
                         if isinstance(lv, bool) and isinstance(rv, bool):
                             self._folded[id(node)] = (lv and rv) if op == "&&" else (lv or rv)
-
                     return BOOL
                 if op in ("==", "!="):
                     if binary_compare_result(lt, rt) is None:
@@ -723,7 +708,6 @@ class SemanticAnalyzer:
                             found=f"{lt}, {rt}",
                         )
                         return ERROR_T
-
                     if id(left) in self._folded and id(right) in self._folded:
                         lv = self._folded[id(left)]
                         rv = self._folded[id(right)]
@@ -742,7 +726,6 @@ class SemanticAnalyzer:
                             found=f"{lt}, {rt}",
                         )
                         return ERROR_T
-
                     if id(left) in self._folded and id(right) in self._folded:
                         lv = self._folded[id(left)]
                         rv = self._folded[id(right)]
@@ -758,7 +741,6 @@ class SemanticAnalyzer:
                                     self._folded[id(node)] = lv >= rv
                             except Exception:
                                 pass
-
                     return BOOL
                 if op == "%":
                     if lt.kind != TypeKind.INT or rt.kind != TypeKind.INT:
@@ -770,14 +752,12 @@ class SemanticAnalyzer:
                             found=f"{lt}, {rt}",
                         )
                         return ERROR_T
-
                     if id(left) in self._folded and id(right) in self._folded:
                         lv = self._folded[id(left)]
                         rv = self._folded[id(right)]
                         if isinstance(lv, int) and isinstance(rv, int):
                             if rv != 0:
                                 self._folded[id(node)] = lv % rv
-
                     return INT
                 if op in ("+", "-", "*", "/"):
                     res = binary_arithmetic_result(lt, rt)
@@ -790,7 +770,6 @@ class SemanticAnalyzer:
                             found=f"{lt}, {rt}",
                         )
                         return ERROR_T
-
                     if id(left) in self._folded and id(right) in self._folded:
                         lv = self._folded[id(left)]
                         rv = self._folded[id(right)]
@@ -858,7 +837,6 @@ class SemanticAnalyzer:
                             )
                 return sym.return_type
             case AssignmentExpr(target=target, operator=op, value=value):
-
                 lt, sym = self._resolve_lvalue_target(target)
                 vt = self._check_expr(value)
                 if lt.kind == TypeKind.ERROR:
@@ -878,60 +856,21 @@ class SemanticAnalyzer:
                         )
                 else:
                     if not is_numeric(lt) or not is_numeric(vt):
-                sym = self._table.lookup(target)
-                if sym is None:
-                    self._err(
-                        "undeclared_identifier",
-                        f"необъявленный идентификатор «{target}»",
-                        node.line,
-                        node.column,
-                    )
-                    vt = self._check_expr(value)
-                    self._expr_types[id(node)] = vt
-                    return vt
-                if sym.kind != SymbolKind.VARIABLE:
-                    self._err(
-                        "invalid_assignment_target",
-                        f"нельзя присвоить значение «{target}»",
-                        node.line,
-                        node.column,
-                    )
-                    vt = self._check_expr(value)
-                    self._expr_types[id(node)] = ERROR_T
-                    return ERROR_T
-                self._symbol_refs[id(node)] = sym
-                vt = self._check_expr(value)
-                if op == "=":
-                    if not assignment_compatible(sym.type, vt):
-                        self._err(
-                            "type_mismatch",
-                            f"несовместимость типов при присваивании в «{target}»",
-                            node.line,
-                            node.column,
-                            expected=str(sym.type),
-                            found=str(vt),
-                        )
-                else:
-                    if not is_numeric(sym.type) or not is_numeric(vt):
-
                         self._err(
                             "type_mismatch",
                             f"оператор «{op}» требует числовые типы",
                             node.line,
                             node.column,
                             expected="числовой тип",
-
                             found=f"{lt}, {vt}",
                         )
                     elif lt.kind == TypeKind.INT and vt.kind == TypeKind.FLOAT:
-
                         self._err(
                             "type_mismatch",
                             "нельзя присвоить float переменной int составным присваиванием (нет неявного сужения)",
                             node.line,
                             node.column,
                         )
-
                 if sym is not None:
                     sym.initialized = True
                 self._expr_types[id(node)] = lt
@@ -943,13 +882,11 @@ class SemanticAnalyzer:
                 if sym is not None:
                     self._symbol_refs[id(node)] = sym
                 if not is_numeric(lt):
-
                     self._err(
                         "type_mismatch",
                         f"оператор «{op}» требует числовую переменную",
                         node.line,
                         node.column,
-
                         found=str(lt),
                     )
                     return ERROR_T
@@ -957,5 +894,4 @@ class SemanticAnalyzer:
                     sym.initialized = True
                 self._expr_types[id(node)] = lt
                 return lt
-
         return ERROR_T

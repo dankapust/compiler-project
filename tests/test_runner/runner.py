@@ -20,7 +20,6 @@ from semantic.analyzer import SemanticAnalyzer
 from semantic.output import format_symbol_table_text, format_type_annotations  
 
 
-
 @dataclass(frozen=True)
 class CaseResult:
     name: str
