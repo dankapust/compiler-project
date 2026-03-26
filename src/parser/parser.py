@@ -232,6 +232,8 @@ class Parser:
         if self._peek().type in _ASSIGN_OPS:
             op_tok = self._advance()
             if not self._is_lvalue(expr):
+
+            if not isinstance(expr, IdentifierExpr):
                 self._error_at(expr.line, expr.column, "недопустимая цель присваивания")
             value = self._assignment()
             return AssignmentExpr(expr.line, expr.column, expr, op_tok.lexeme, value)
@@ -293,8 +295,12 @@ class Parser:
         if self._peek().type in (TokenType.PLUS_PLUS, TokenType.MINUS_MINUS):
             op_tok = self._advance()
             operand = self._unary()
-            if self._is_lvalue(operand):
+         if self._is_lvalue(operand):
                 return IncDecExpr(op_tok.line, op_tok.column, operand, op_tok.lexeme, True)
+
+            if isinstance(operand, IdentifierExpr):
+                return IncDecExpr(op_tok.line, op_tok.column, operand.name, op_tok.lexeme, True)
+
             self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
             return operand
         if self._peek().type in (TokenType.MINUS, TokenType.BANG):
@@ -312,6 +318,9 @@ class Parser:
             op_tok = self._advance()
             if self._is_lvalue(expr):
                 return IncDecExpr(expr.line, expr.column, expr, op_tok.lexeme, False)
+            if isinstance(expr, IdentifierExpr):
+                return IncDecExpr(expr.line, expr.column, expr.name, op_tok.lexeme, False)
+
             self._error_at(op_tok.line, op_tok.column, "недопустимая цель для ++/--")
         return expr
 

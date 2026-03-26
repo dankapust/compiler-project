@@ -17,6 +17,7 @@ from lexer.token import TokenType
 from parser.parser import Parser  
 
 
+
 class TestSymbolTable(unittest.TestCase):
     def test_enter_exit_scope(self) -> None:
         t = SymbolTable()

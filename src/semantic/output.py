@@ -9,7 +9,9 @@ from parser.ast import (
     ProgramNode,
     LiteralExpr,
     IdentifierExpr,
+
     MemberAccessExpr,
+
     BinaryExpr,
     UnaryExpr,
     CallExpr,
@@ -110,6 +112,7 @@ def format_type_annotations(program: ProgramNode, expr_types: dict[int, str]) ->
         match n:
             case LiteralExpr() | IdentifierExpr():
                 pass
+
             case MemberAccessExpr(base=b):
                 walk_expr(b)
             case BinaryExpr(left=left, right=right):
@@ -183,8 +186,10 @@ def _expr_label(n: ASTNode) -> str:
     match n:
         case IdentifierExpr(name=name):
             return f"идент {name}"
+
         case MemberAccessExpr(member=m):
             return f"поле .{m}"
+
         case LiteralExpr():
             return "литерал"
         case BinaryExpr(operator=op):
@@ -235,6 +240,7 @@ def format_validation_report(
     lines.append("    " + ", ".join(struct_lines) if struct_lines else "    (нет)")
     lines.append("  Function:")
     lines.append("    " + ", ".join(fn_lines) if fn_lines else "    (нет)")
+
     return "\n".join(lines) + "\n"
 
 
@@ -265,12 +271,14 @@ def format_decorated_ast_text(
                 lines.append(
                     f"{pad}Идентификатор {name} [тип: {ts}, символ: {_sym_desc(sym)}]"
                 )
+
             case MemberAccessExpr(base=b, member=m):
                 sym = symbol_refs.get(id(n)) if symbol_refs is not None else None
                 lines.append(
                     f"{pad}Доступ к полю .{m} [тип: {ts}, символ: {_sym_desc(sym)}]"
                 )
                 fmt_expr(b, indent + 1)
+
             case BinaryExpr(left=l, operator=op, right=r):
                 lines.append(f"{pad}Бинарное {op} [тип: {ts}]")
                 fmt_expr(l, indent + 1)
@@ -285,15 +293,24 @@ def format_decorated_ast_text(
                     fmt_expr(a, indent + 1)
             case AssignmentExpr(target=t, operator=op, value=v):
                 sym = symbol_refs.get(id(n)) if symbol_refs is not None else None
+
                 lines.append(f"{pad}Присваивание {op} [тип: {ts}, символ: {_sym_desc(sym)}]")
                 fmt_expr(t, indent + 1)
+
+                lines.append(f"{pad}Присваивание {t} {op} [тип: {ts}, символ: {_sym_desc(sym)}]")
+
                 fmt_expr(v, indent + 1)
             case IncDecExpr(target=t, operator=op, prefix=pr):
                 sym = symbol_refs.get(id(n)) if symbol_refs is not None else None
                 lines.append(
+
                     f"{pad}Инкремент {op} {'преф' if pr else 'пост'} [тип: {ts}, символ: {_sym_desc(sym)}]"
                 )
                 fmt_expr(t, indent + 1)
+
+                    f"{pad}Инкремент {op} {'преф' if pr else 'пост'} {t} [тип: {ts}, символ: {_sym_desc(sym)}]"
+                )
+
 
     def fmt_stmt(s: ASTNode, indent: int) -> None:
         pad = "  " * indent
