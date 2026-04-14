@@ -22,6 +22,7 @@ from semantic.output import (
     format_type_annotations,
     format_validation_report,
 )
+from ir import IRGenerator, format_ir_text, format_ir_dot, format_ir_json, format_ir_stats, PeepholeOptimizer
 
 
 def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
@@ -289,6 +290,68 @@ def _cmd_symbols(args: argparse.Namespace) -> int:
     return 1 if sem.get_errors() else 0
 
 
+def _cmd_ir(args: argparse.Namespace) -> int:
+    src_path = Path(args.input)
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
+        return 2
+
+    source, pp_errors = _preprocess(source, args.preprocess)
+    tokens, lex_errors = _tokenize(source)
+    parser = Parser(tokens=tokens)
+    program = parser.parse()
+
+    if pp_errors or lex_errors or parser.errors:
+        print("ir: пропущено из-за ошибок разбора", file=sys.stderr)
+        return 1
+
+    sem = SemanticAnalyzer(file_name=str(src_path))
+    sem.analyze(program)
+    if sem.get_errors():
+        print("ir: пропущено из-за семантических ошибок", file=sys.stderr)
+        return 1
+
+    generator = IRGenerator(sem.get_symbol_table(), sem.get_decorated_ast())
+    ir_prog = generator.generate(program)
+
+    if args.optimize:
+        optimizer = PeepholeOptimizer(ir_prog)
+        ir_prog = optimizer.optimize()
+        report = optimizer.get_optimization_report()
+        if report:
+            for line in report:
+                print(f"[opt] {line}", file=sys.stderr)
+
+    if args.stats:
+        sys.stdout.write(format_ir_stats(ir_prog) + "\n")
+        return 0
+
+    match args.format:
+        case "text":
+            out_text = format_ir_text(ir_prog)
+        case "dot":
+            out_text = format_ir_dot(ir_prog)
+        case "json":
+            out_text = format_ir_json(ir_prog)
+        case _:
+            print(f"ошибка: неизвестный формат IR: {args.format}", file=sys.stderr)
+            return 2
+
+    if args.output:
+        try:
+            out_path = Path(args.output)
+            out_path.write_text(out_text, encoding="utf-8")
+        except OSError as e:
+            print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
+            return 2
+    else:
+        sys.stdout.write(out_text + "\n")
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="compiler")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -366,6 +429,15 @@ def main(argv: list[str] | None = None) -> int:
     p_sym.add_argument("--output", default=None)
     p_sym.add_argument("--no-preprocess", action="store_false", dest="preprocess")
     p_sym.set_defaults(func=_cmd_symbols, preprocess=True)
+
+    p_ir = sub.add_parser("ir", help="Generate Intermediate Representation (IR)")
+    p_ir.add_argument("--input", required=True)
+    p_ir.add_argument("--format", choices=["text", "dot", "json"], default="text")
+    p_ir.add_argument("--output", default=None)
+    p_ir.add_argument("--optimize", action="store_true", help="Apply peephole optimizations")
+    p_ir.add_argument("--stats", action="store_true", help="Show IR statistics")
+    p_ir.add_argument("--no-preprocess", action="store_false", dest="preprocess")
+    p_ir.set_defaults(func=_cmd_ir, preprocess=True)
 
     args = ap.parse_args(argv)
     return int(args.func(args))

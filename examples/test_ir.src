@@ -1,0 +1,15 @@
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+int main() {
+    int x = 2 * 3 + 4;
+    while (x > 0) {
+        x = x - 1;
+    }
+    return factorial(x);
+}

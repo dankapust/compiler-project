@@ -1,0 +1,4 @@
+fn main() {
+  int x;
+  x = true;
+}
