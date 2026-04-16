@@ -20,3 +20,6 @@ ast.png
 ll1*.md
 ll1*.dot
 ll1*.png
+*.png
+*.dot
+*.src

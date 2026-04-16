@@ -349,6 +349,34 @@ def _cmd_ir(args: argparse.Namespace) -> int:
     else:
         sys.stdout.write(out_text + "\n")
 
+    if getattr(args, "render_png", False):
+        if args.format != "dot":
+            print("ошибка: для --render-png нужен --format dot", file=sys.stderr)
+            return 2
+        if not args.output:
+            print("ошибка: для --render-png укажите --output <файл.dot>", file=sys.stderr)
+            return 2
+
+        dot_path = Path(args.output)
+        png_path = dot_path.with_suffix(".png")
+        try:
+            import subprocess
+            subprocess.run(
+                ["dot", "-Tpng", str(dot_path), "-o", str(png_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            print(f"Граф успешнo сохранен в {png_path}")
+        except FileNotFoundError:
+            print("ошибка: программа Graphviz «dot» не найдена в PATH (установите Graphviz для PNG)", file=sys.stderr)
+            return 2
+        except subprocess.CalledProcessError as e:
+            msg = e.stderr.strip() if e.stderr else "сбой dot"
+            print(f"ошибка: сбой dot: {msg}", file=sys.stderr)
+            return 2
+
     return 0
 
 
@@ -436,6 +464,8 @@ def main(argv: list[str] | None = None) -> int:
     p_ir.add_argument("--output", default=None)
     p_ir.add_argument("--optimize", action="store_true", help="Apply peephole optimizations")
     p_ir.add_argument("--stats", action="store_true", help="Show IR statistics")
+    p_ir.add_argument("--render-png", action="store_true",
+                         help="If format=dot and output is set, also run Graphviz to produce <output>.png")
     p_ir.add_argument("--no-preprocess", action="store_false", dest="preprocess")
     p_ir.set_defaults(func=_cmd_ir, preprocess=True)
 

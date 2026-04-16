@@ -38,6 +38,9 @@ class DecoratedAST:
     symbol_refs: dict[int, SymbolInfo]
     call_refs: dict[int, SymbolInfo]
 
+    def get_type(self, node: ASTNode) -> str | None:
+        return self.expr_types.get(id(node))
+
 
 _KIND_RU = {
     "VARIABLE": "переменная",

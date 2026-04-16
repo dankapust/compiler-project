@@ -34,13 +34,13 @@ def _compile_to_ir(source: str):
 
 class TestIntegrationPipeline(unittest.TestCase):
     def test_simple_function(self):
-        source = "int main() { return 42; }"
+        source = "fn main() -> int { return 42; }"
         ir = _compile_to_ir(source)
         self.assertEqual(len(ir.functions), 1)
         self.assertEqual(ir.functions[0].name, "main")
 
     def test_variable_assignment(self):
-        source = "int main() { int x = 10; return x; }"
+        source = "fn main() -> int { int x = 10; return x; }"
         ir = _compile_to_ir(source)
         entry = ir.functions[0].basic_blocks[0]
         alloca = [i for i in entry.instructions if i.opcode == IROpcode.ALLOCA]
@@ -50,7 +50,7 @@ class TestIntegrationPipeline(unittest.TestCase):
 
     def test_if_else(self):
         source = """
-        int main() {
+        fn main() -> int {
             int x = 5;
             if (x > 3) {
                 return 1;
@@ -65,7 +65,7 @@ class TestIntegrationPipeline(unittest.TestCase):
 
     def test_while_loop(self):
         source = """
-        int main() {
+        fn main() -> int {
             int i = 0;
             while (i < 10) {
                 i = i + 1;
@@ -79,28 +79,28 @@ class TestIntegrationPipeline(unittest.TestCase):
 
     def test_function_call(self):
         source = """
-        int add(int a, int b) { return a; }
-        int main() { return add(1, 2); }
+        fn add(int a, int b) -> int { return a; }
+        fn main() -> int { return add(1, 2); }
         """
         ir = _compile_to_ir(source)
         self.assertEqual(len(ir.functions), 2)
 
     def test_text_output(self):
-        source = "int main() { return 0; }"
+        source = "fn main() -> int { return 0; }"
         ir = _compile_to_ir(source)
         text = format_ir_text(ir)
         self.assertIn("function main", text)
         self.assertIn("RETURN", text)
 
     def test_dot_output(self):
-        source = "int main() { return 0; }"
+        source = "fn main() -> int { return 0; }"
         ir = _compile_to_ir(source)
         dot = format_ir_dot(ir)
         self.assertIn("digraph CFG", dot)
         self.assertIn("->", dot)
 
     def test_json_output(self):
-        source = "int main() { return 0; }"
+        source = "fn main() -> int { return 0; }"
         ir = _compile_to_ir(source)
         import json
         j = format_ir_json(ir)
@@ -109,7 +109,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         self.assertEqual(len(data["functions"]), 1)
 
     def test_stats_output(self):
-        source = "int main() { int x = 1; return x; }"
+        source = "fn main() -> int { int x = 1; return x; }"
         ir = _compile_to_ir(source)
         stats = format_ir_stats(ir)
         self.assertIn("Functions:", stats)
@@ -117,7 +117,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         self.assertIn("Instructions:", stats)
 
     def test_peephole_constant_fold(self):
-        source = "int main() { return 3 + 4; }"
+        source = "fn main() -> int { return 3 + 4; }"
         ir = _compile_to_ir(source)
         opt = PeepholeOptimizer(ir)
         ir = opt.optimize()
@@ -125,7 +125,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         self.assertTrue(any("constant fold" in r for r in report))
 
     def test_peephole_algebraic(self):
-        source = "int main() { int x = 5; return x + 0; }"
+        source = "fn main() -> int { int x = 5; return x + 0; }"
         ir = _compile_to_ir(source)
         opt = PeepholeOptimizer(ir)
         ir = opt.optimize()
@@ -135,7 +135,7 @@ class TestIntegrationPipeline(unittest.TestCase):
 
     def test_blocks_end_with_control_flow(self):
         source = """
-        int main() {
+        fn main() -> int {
             if (1) { return 1; }
             return 0;
         }
@@ -153,7 +153,7 @@ class TestIntegrationPipeline(unittest.TestCase):
 
     def test_all_jumps_target_valid_labels(self):
         source = """
-        int main() {
+        fn main() -> int {
             int x = 1;
             if (x > 0) { return 1; }
             return 0;

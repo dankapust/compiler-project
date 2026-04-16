@@ -2,7 +2,7 @@ import sys
 import os
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "src"))
 
 from parser.ast import (
     ProgramNode, FunctionDecl, Param, BlockStmt, CallExpr,
@@ -15,7 +15,7 @@ from ir.ir_generator import IRGenerator
 
 
 def _make_decorated_ast():
-    return DecoratedAST(expr_types={}, symbol_refs={}, call_refs={})
+    return DecoratedAST(program=None, expr_types={}, folded_constants={}, symbol_refs={}, call_refs={})
 
 
 class TestFunctionTranslation(unittest.TestCase):

@@ -412,6 +412,11 @@ class Parser:
     def _synchronize(self) -> None:
         self.metrics.recovered_count += 1
         self._just_synced = True
+        
+        # Unconditionally advance once if we are not at EOF so we don't infinitely loop on the same Error-inducing token.
+        if not self._is_at_end():
+            self._advance()
+
         while not self._is_at_end():
             if self._previous().type == TokenType.SEMICOLON:
                 return

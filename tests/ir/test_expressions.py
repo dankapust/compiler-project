@@ -15,7 +15,7 @@ from ir.ir_generator import IRGenerator
 
 
 def _make_decorated_ast():
-    return DecoratedAST(expr_types={}, symbol_refs={}, call_refs={})
+    return DecoratedAST(program=None, expr_types={}, folded_constants={}, symbol_refs={}, call_refs={})
 
 
 class TestExpressionTranslation(unittest.TestCase):

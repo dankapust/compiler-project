@@ -28,7 +28,7 @@ def _compile_to_ir(source: str):
 
 class TestIRValidation(unittest.TestCase):
     def test_basic_block_termination(self):
-        source = "int main() { if (1) { return 1; } return 0; }"
+        source = "fn main() -> int { if (1) { return 1; } return 0; }"
         ir = _compile_to_ir(source)
         for func in ir.functions:
             for block in func.basic_blocks:
@@ -41,9 +41,9 @@ class TestIRValidation(unittest.TestCase):
                 self.assertTrue(is_terminator, f"Block {block.label} does not end with a terminator")
 
     def test_label_validity(self):
-        source = "int main() { while(1) { if(1) break; } return 0; }"
+        source = "fn main() -> int { while(1) { if(1) break; } return 0; }"
         # Note: break might not be supported yet, using simple while
-        source = "int main() { while(1) { if(1) { return 1; } } return 0; }"
+        source = "fn main() -> int { while(1) { if(1) { return 1; } } return 0; }"
         ir = _compile_to_ir(source)
         for func in ir.functions:
             all_labels = {b.label for b in func.basic_blocks}
