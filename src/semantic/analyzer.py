@@ -18,6 +18,10 @@ from parser.ast import (
     IfStmt,
     WhileStmt,
     ForStmt,
+    BreakStmt,
+    ContinueStmt,
+    SwitchStmt,
+    SwitchCase,
     ReturnStmt,
     VarDeclStmt,
     EmptyStmt,
@@ -68,6 +72,8 @@ class SemanticAnalyzer:
         self._current_return: Type = VOID
         self._current_fn: str = ""
         self._local_stack_next: int = 0
+        self._loop_depth: int = 0
+        self._switch_depth: int = 0
 
     def _snapshot_initialized(self) -> dict[int, tuple[SymbolInfo, bool]]:
         snap: dict[int, tuple[SymbolInfo, bool]] = {}
@@ -101,6 +107,8 @@ class SemanticAnalyzer:
         self._symbol_refs.clear()
         self._call_refs.clear()
 
+        self._register_builtins()
+
         decls = list(ast.declarations)
         for d in decls:
             if isinstance(d, StructDecl):
@@ -123,6 +131,9 @@ class SemanticAnalyzer:
     def get_symbol_table(self) -> SymbolTable:
         return self._table
 
+    def get_registered_struct_types(self) -> dict[str, Type]:
+        return dict(self._structs)
+
     def get_decorated_ast(self) -> DecoratedAST:
         assert self._program is not None
         et = {k: str(v) for k, v in self._expr_types.items()}
@@ -133,6 +144,27 @@ class SemanticAnalyzer:
             symbol_refs=dict(self._symbol_refs),
             call_refs=dict(self._call_refs),
         )
+
+    def _register_builtins(self) -> None:
+        builtins = [
+            ("print_int", function_type((INT,), VOID), (INT,), ("val",), VOID),
+            ("print_string", function_type((STRING,), VOID), (STRING,), ("val",), VOID),
+            ("read_int", function_type((), INT), (), (), INT),
+            ("exit", function_type((INT,), VOID), (INT,), ("code",), VOID),
+        ]
+        for name, ft, ptypes, pnames, ret in builtins:
+            info = SymbolInfo(
+                name=name,
+                type=ft,
+                kind=SymbolKind.FUNCTION,
+                line=0,
+                column=0,
+                return_type=ret,
+                param_types=ptypes,
+                param_names=pnames,
+                initialized=True,
+            )
+            self._table.insert(name, info)
 
     def _err(
         self,
@@ -277,8 +309,8 @@ class SemanticAnalyzer:
             kind=SymbolKind.VARIABLE,
             line=node.line,
             column=node.column,
-            
-            
+
+
             initialized=False,
             stack_offset=None,
         )
@@ -339,6 +371,9 @@ class SemanticAnalyzer:
         self._current_fn = ""
 
     def _analyze_statement(self, node: ASTNode) -> None:
+        def _is_valid_condition_type(t: Type) -> bool:
+            return t.kind in (TypeKind.BOOL, TypeKind.INT, TypeKind.FLOAT, TypeKind.STRING, TypeKind.NULL, TypeKind.ERROR)
+
         match node:
             case BlockStmt(statements=stmts):
                 self._table.enter_scope("block")
@@ -351,7 +386,7 @@ class SemanticAnalyzer:
                 self._check_expr(e)
             case IfStmt(condition=c, then_branch=th, else_branch=el):
                 ct = self._check_expr(c)
-                if ct.kind != TypeKind.BOOL and ct.kind != TypeKind.ERROR:
+                if not _is_valid_condition_type(ct):
                     self._err(
                         "invalid_condition_type",
                         "условие if должно иметь тип bool",
@@ -372,7 +407,7 @@ class SemanticAnalyzer:
                 self._merge_initialized_after_if(before, then_state, else_state)
             case WhileStmt(condition=c, body=b):
                 ct = self._check_expr(c)
-                if ct.kind != TypeKind.BOOL and ct.kind != TypeKind.ERROR:
+                if not _is_valid_condition_type(ct):
                     self._err(
                         "invalid_condition_type",
                         "условие while должно иметь тип bool",
@@ -382,8 +417,10 @@ class SemanticAnalyzer:
                         found=str(ct),
                     )
                 before = self._snapshot_initialized()
+                self._loop_depth += 1
                 self._analyze_statement(b)
-                
+                self._loop_depth -= 1
+
                 self._restore_initialized(before)
             case ForStmt(init=init, condition=cond, update=upd, body=body):
                 if self._table.scope_depth() >= 64:
@@ -396,7 +433,7 @@ class SemanticAnalyzer:
                     self._check_expr(init)
                 if cond:
                     ctt = self._check_expr(cond)
-                    if ctt.kind != TypeKind.BOOL and ctt.kind != TypeKind.ERROR:
+                    if not _is_valid_condition_type(ctt):
                         self._err(
                             "invalid_condition_type",
                             "условие for должно иметь тип bool",
@@ -424,8 +461,68 @@ class SemanticAnalyzer:
                                 upd.line,
                                 upd.column,
                             )
+                self._loop_depth += 1
                 self._analyze_statement(body)
+                self._loop_depth -= 1
                 self._table.exit_scope()
+            case BreakStmt():
+                if self._loop_depth <= 0 and self._switch_depth <= 0:
+                    self._err(
+                        "invalid_break",
+                        "оператор break допустим только внутри цикла или switch",
+                        node.line,
+                        node.column,
+                    )
+            case ContinueStmt():
+                if self._loop_depth <= 0:
+                    self._err(
+                        "invalid_continue",
+                        "оператор continue допустим только внутри цикла",
+                        node.line,
+                        node.column,
+                    )
+            case SwitchStmt(expression=expr, cases=cases, default_body=default_body):
+                et = self._check_expr(expr)
+                if et.kind not in (TypeKind.INT, TypeKind.BOOL, TypeKind.ERROR):
+                    self._err(
+                        "type_mismatch",
+                        "switch поддерживает только int/bool выражения",
+                        expr.line,
+                        expr.column,
+                        expected="int или bool",
+                        found=str(et),
+                    )
+                seen_case_vals: set[Any] = set()
+                has_default = len(default_body) > 0
+                self._switch_depth += 1
+                for case_node in cases:
+                    cv_t = self._check_expr(case_node.value)
+                    if cv_t.kind not in (TypeKind.INT, TypeKind.BOOL, TypeKind.ERROR):
+                        self._err(
+                            "type_mismatch",
+                            "case-метка должна быть int/bool",
+                            case_node.value.line,
+                            case_node.value.column,
+                            expected="int или bool",
+                            found=str(cv_t),
+                        )
+                    if id(case_node.value) in self._folded:
+                        cv = self._folded[id(case_node.value)]
+                        if cv in seen_case_vals:
+                            self._err(
+                                "duplicate_declaration",
+                                f"дублирующееся значение case: {cv}",
+                                case_node.line,
+                                case_node.column,
+                            )
+                        else:
+                            seen_case_vals.add(cv)
+                    for stmt in case_node.body:
+                        self._analyze_statement(stmt)
+                if has_default:
+                    for stmt in default_body:
+                        self._analyze_statement(stmt)
+                self._switch_depth -= 1
             case ReturnStmt(value=val):
                 if self._current_return.kind == TypeKind.VOID:
                     if val is not None:
@@ -480,8 +577,8 @@ class SemanticAnalyzer:
             kind=SymbolKind.VARIABLE,
             line=node.line,
             column=node.column,
-            
-            
+
+
             initialized=False,
             stack_offset=off,
             size_bytes=sz,
@@ -549,7 +646,7 @@ class SemanticAnalyzer:
                         target.column,
                     )
                     return ERROR_T, None
-                
+
                 if id(base) in self._symbol_refs:
                     self._symbol_refs[id(target)] = self._symbol_refs[id(base)]
                 return fields[member], None
@@ -785,7 +882,7 @@ class SemanticAnalyzer:
                                     if rv == 0:
                                         raise ZeroDivisionError()
                                     if res.kind == TypeKind.INT:
-                                        
+
                                         self._folded[id(node)] = int(lv / rv)
                                     else:
                                         self._folded[id(node)] = lv / rv

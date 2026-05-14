@@ -103,6 +103,7 @@ class IRInstruction:
     opcode: IROpcode
     dest: IROperand | None = None
     args: list[IROperand | IRPhiParam] = None
+    comment: str | None = None
 
     def __post_init__(self):
         if self.args is None:
@@ -118,4 +119,7 @@ class IRInstruction:
         if args_str:
             parts.append(args_str)
 
-        return " ".join(parts)
+        base_str = " ".join(parts)
+        if self.comment:
+            return f"{base_str:25} # {self.comment}"
+        return base_str

@@ -28,7 +28,11 @@ def _compile_to_ir(source: str):
     sem = SemanticAnalyzer(file_name="<test>")
     sem.analyze(program)
 
-    gen = IRGenerator(sem.get_symbol_table(), sem.get_decorated_ast())
+    gen = IRGenerator(
+        sem.get_symbol_table(),
+        sem.get_decorated_ast(),
+        sem.get_registered_struct_types(),
+    )
     return gen.generate(program)
 
 
@@ -43,10 +47,8 @@ class TestIntegrationPipeline(unittest.TestCase):
         source = "fn main() -> int { int x = 10; return x; }"
         ir = _compile_to_ir(source)
         entry = ir.functions[0].basic_blocks[0]
-        alloca = [i for i in entry.instructions if i.opcode == IROpcode.ALLOCA]
         store = [i for i in entry.instructions if i.opcode == IROpcode.STORE]
-        self.assertTrue(len(alloca) >= 1)
-        self.assertTrue(len(store) >= 1)
+        self.assertTrue(len(store) >= 1, "локаль должна создаваться через STORE в IR без отдельной ALLOCA")
 
     def test_if_else(self):
         source = """

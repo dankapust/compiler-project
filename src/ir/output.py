@@ -5,10 +5,17 @@ from .basic_block import IRProgram, IRFunction, BasicBlock
 
 def format_ir_text(program: IRProgram) -> str:
     lines = []
+    lines.append("# Program: IR Generation")
+    lines.append("# Generated IR")
+    lines.append("")
+    lines.append(".global main")
+    lines.append("")
 
     for f in program.functions:
         lines.append(f"function {f.name}: {f.return_type} ({', '.join(f'{t} {n}' for t, n in f.params)})")
         for block in f.basic_blocks:
+            b_comment = block.comment if block.comment else block.label
+            lines.append(f"  # Basic block: {b_comment}")
             lines.append(f"  {block.label}:")
             for instr in block.instructions:
                 lines.append(f"    {instr.format()}")

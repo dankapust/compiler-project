@@ -5,7 +5,8 @@ from typing import Any
 from parser.ast import (
     ASTNode, ProgramNode,
     LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
-    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
+    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, BreakStmt, ContinueStmt, SwitchCase, SwitchStmt,
+    ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
 
@@ -90,6 +91,31 @@ def node_to_jsonable(node: ASTNode) -> dict[str, Any]:
                 "node": "ReturnStmt",
                 "line": node.line, "column": node.column,
                 "value": node_to_jsonable(node.value) if node.value else None,
+            }
+        case BreakStmt():
+            return {
+                "node": "BreakStmt",
+                "line": node.line, "column": node.column,
+            }
+        case ContinueStmt():
+            return {
+                "node": "ContinueStmt",
+                "line": node.line, "column": node.column,
+            }
+        case SwitchCase():
+            return {
+                "node": "SwitchCase",
+                "line": node.line, "column": node.column,
+                "value": node_to_jsonable(node.value),
+                "body": [node_to_jsonable(s) for s in node.body],
+            }
+        case SwitchStmt():
+            return {
+                "node": "SwitchStmt",
+                "line": node.line, "column": node.column,
+                "expression": node_to_jsonable(node.expression),
+                "cases": [node_to_jsonable(c) for c in node.cases],
+                "default_body": [node_to_jsonable(s) for s in node.default_body],
             }
         case EmptyStmt():
             return {
@@ -194,6 +220,20 @@ def from_jsonable(data: dict[str, Any]) -> ASTNode:
         case "ReturnStmt":
             val = from_jsonable(data["value"]) if data["value"] else None
             return ReturnStmt(line, col, val)
+        case "BreakStmt":
+            return BreakStmt(line, col)
+        case "ContinueStmt":
+            return ContinueStmt(line, col)
+        case "SwitchCase":
+            return SwitchCase(line, col, from_jsonable(data["value"]), tuple(from_jsonable(s) for s in data["body"]))
+        case "SwitchStmt":
+            return SwitchStmt(
+                line,
+                col,
+                from_jsonable(data["expression"]),
+                tuple(from_jsonable(c) for c in data["cases"]),
+                tuple(from_jsonable(s) for s in data["default_body"]),
+            )
         case "EmptyStmt":
             return EmptyStmt(line, col)
         case "LiteralExpr":

@@ -142,6 +142,37 @@ class ForStmt(ASTNode):
 
 
 @dataclass(frozen=True)
+class BreakStmt(ASTNode):
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_break(self)
+
+
+@dataclass(frozen=True)
+class ContinueStmt(ASTNode):
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_continue(self)
+
+
+@dataclass(frozen=True)
+class SwitchCase(ASTNode):
+    value: ASTNode
+    body: tuple[ASTNode, ...] = ()
+
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_switch_case(self)
+
+
+@dataclass(frozen=True)
+class SwitchStmt(ASTNode):
+    expression: ASTNode
+    cases: tuple[SwitchCase, ...] = ()
+    default_body: tuple[ASTNode, ...] = ()
+
+    def accept(self, visitor: ASTVisitor) -> Any:
+        return visitor.visit_switch(self)
+
+
+@dataclass(frozen=True)
 class ReturnStmt(ASTNode):
     value: ASTNode | None = None
 
@@ -209,6 +240,10 @@ class ASTVisitor:
     def visit_if(self, node: IfStmt) -> Any: ...
     def visit_while(self, node: WhileStmt) -> Any: ...
     def visit_for(self, node: ForStmt) -> Any: ...
+    def visit_break(self, node: BreakStmt) -> Any: ...
+    def visit_continue(self, node: ContinueStmt) -> Any: ...
+    def visit_switch_case(self, node: SwitchCase) -> Any: ...
+    def visit_switch(self, node: SwitchStmt) -> Any: ...
     def visit_return(self, node: ReturnStmt) -> Any: ...
     def visit_var_decl(self, node: VarDeclStmt) -> Any: ...
     def visit_empty_stmt(self, node: EmptyStmt) -> Any: ...

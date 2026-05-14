@@ -3,7 +3,8 @@ from __future__ import annotations
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
     LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
-    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
+    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, BreakStmt, ContinueStmt, SwitchCase, SwitchStmt,
+    ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
 
@@ -142,6 +143,43 @@ class _DotGenerator(ASTVisitor):
         if node.value:
             vid = node.value.accept(self)
             self._add_edge(nid, vid)
+        return nid
+
+    def visit_break(self, node: BreakStmt) -> str:
+        nid = self._new_id()
+        self._add_node(nid, "BreakStmt", _STMT_COLOR)
+        return nid
+
+    def visit_continue(self, node: ContinueStmt) -> str:
+        nid = self._new_id()
+        self._add_node(nid, "ContinueStmt", _STMT_COLOR)
+        return nid
+
+    def visit_switch_case(self, node: SwitchCase) -> str:
+        nid = self._new_id()
+        self._add_node(nid, "Case", _STMT_COLOR)
+        vid = node.value.accept(self)
+        self._add_edge(nid, vid, "value")
+        for s in node.body:
+            sid = s.accept(self)
+            self._add_edge(nid, sid, "stmt")
+        return nid
+
+    def visit_switch(self, node: SwitchStmt) -> str:
+        nid = self._new_id()
+        self._add_node(nid, "SwitchStmt", _STMT_COLOR)
+        eid = node.expression.accept(self)
+        self._add_edge(nid, eid, "expr")
+        for c in node.cases:
+            cid = c.accept(self)
+            self._add_edge(nid, cid, "case")
+        if node.default_body:
+            did = self._new_id()
+            self._add_node(did, "Default", _STMT_COLOR)
+            self._add_edge(nid, did, "default")
+            for s in node.default_body:
+                sid = s.accept(self)
+                self._add_edge(did, sid)
         return nid
 
     def visit_empty_stmt(self, node: EmptyStmt) -> str:

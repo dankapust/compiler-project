@@ -1,0 +1,13 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function main: int ()
+  # Basic block: entry_main_1
+  entry_main_1:
+    RETURN 42
+    JUMP exit_main_2
+
+  # Basic block: exit_main_2
+  exit_main_2:

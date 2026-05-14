@@ -1,0 +1,28 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function add: int (int a, int b)
+  # Basic block: entry_add_1
+  entry_add_1:
+    [a_1] = STORE t0
+    [b_1] = STORE t1
+    t1:int = LOAD [a_1]
+    RETURN t1:int
+    JUMP exit_add_2
+
+  # Basic block: exit_add_2
+  exit_add_2:
+
+function main: int ()
+  # Basic block: entry_main_3
+  entry_main_3:
+    PARAM 0, 1
+    PARAM 1, 2
+    t2:int = CALL add, 2
+    RETURN t2:int
+    JUMP exit_main_4
+
+  # Basic block: exit_main_4
+  exit_main_4:

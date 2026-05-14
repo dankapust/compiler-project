@@ -3,7 +3,8 @@ from __future__ import annotations
 from parser.ast import (
     ASTVisitor, ASTNode, ProgramNode,
     LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
-    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
+    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, BreakStmt, ContinueStmt, SwitchCase, SwitchStmt,
+    ReturnStmt, VarDeclStmt, EmptyStmt,
     Param, FunctionDecl, StructDecl,
 )
 
@@ -116,6 +117,36 @@ class _PrettyPrinter(ASTVisitor):
     def visit_return(self, node: ReturnStmt) -> None:
         val = _expr_str(node.value) if node.value else "<none>"
         self._emit(f"ReturnStmt {self._loc(node)}: {val}")
+
+    def visit_break(self, node: BreakStmt) -> None:
+        self._emit(f"BreakStmt {self._loc(node)}")
+
+    def visit_continue(self, node: ContinueStmt) -> None:
+        self._emit(f"ContinueStmt {self._loc(node)}")
+
+    def visit_switch_case(self, node: SwitchCase) -> None:
+        self._emit(f"Case: {_expr_str(node.value)} {self._loc(node)}")
+        self._indent += 1
+        for s in node.body:
+            s.accept(self)
+        self._indent -= 1
+
+    def visit_switch(self, node: SwitchStmt) -> None:
+        self._emit(f"SwitchStmt {self._loc(node)}:")
+        self._indent += 1
+        self._emit(f"Expression: {_expr_str(node.expression)}")
+        self._emit("Cases:")
+        self._indent += 1
+        for c in node.cases:
+            c.accept(self)
+        self._indent -= 1
+        if node.default_body:
+            self._emit("Default:")
+            self._indent += 1
+            for s in node.default_body:
+                s.accept(self)
+            self._indent -= 1
+        self._indent -= 1
 
     def visit_empty_stmt(self, node: EmptyStmt) -> None:
         self._emit(f"EmptyStmt {self._loc(node)}")

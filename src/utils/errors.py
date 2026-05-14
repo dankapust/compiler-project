@@ -11,5 +11,3 @@ class ScanError:
 
     def format(self) -> str:
         return f"{self.line}:{self.column} {self.message}"
-
-

@@ -17,6 +17,9 @@ Statement       = Block
                 | IfStmt
                 | WhileStmt
                 | ForStmt
+                | SwitchStmt
+                | BreakStmt
+                | ContinueStmt
                 | ReturnStmt
                 | ExprStmt
                 | VarDecl
@@ -30,6 +33,11 @@ WhileStmt       = "while" "(" Expression ")" Statement;
 ForStmt         = "for" "(" [ ForInit ] ";" [ Expression ] ";" [ Expression ] ")" Statement;
 ForInit         = VarDeclNoSemi | Expression;
 VarDeclNoSemi   = Type Identifier [ "=" Expression ];
+SwitchStmt      = "switch" "(" Expression ")" "{" { CaseClause } [ DefaultClause ] "}";
+CaseClause      = "case" Expression ":" { Statement };
+DefaultClause   = "default" ":" { Statement };
+BreakStmt       = "break" ";";
+ContinueStmt    = "continue" ";";
 
 ReturnStmt      = "return" [ Expression ] ";";
 ExprStmt        = Expression ";";

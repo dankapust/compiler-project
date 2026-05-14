@@ -66,6 +66,20 @@ def function_type(params: tuple[Type, ...], ret: Type) -> Type:
     return Type(TypeKind.FUNCTION, None, None, params, ret)
 
 
+def struct_field_byte_offset(st: Type, field: str) -> int:
+    if st.kind != TypeKind.STRUCT or not st.fields:
+        raise ValueError("struct_field_byte_offset: not a struct type")
+    offset = 0
+    for fname, ft in st.fields.items():
+        al = type_alignment(ft)
+        pad = (al - (offset % al)) % al
+        offset += pad
+        if fname == field:
+            return offset
+        offset += type_size_bytes(ft)
+    raise KeyError(field)
+
+
 def type_size_bytes(t: Type) -> int:
     match t.kind:
         case TypeKind.INT:

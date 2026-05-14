@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+
 from .ir_instructions import IRInstruction
 
 
@@ -9,6 +11,7 @@ class BasicBlock:
     instructions: list[IRInstruction] = field(default_factory=list)
     predecessors: list[BasicBlock] = field(default_factory=list)
     successors: list[BasicBlock] = field(default_factory=list)
+    comment: str | None = None
 
     def add_instruction(self, instruction: IRInstruction) -> None:
         self.instructions.append(instruction)
@@ -42,9 +45,22 @@ class IRFunction:
 
 
 @dataclass
+class IRGlobal:
+    asm_name: str
+    size_bytes: int
+    init_int: int | None = None
+    init_float_bits: int | None = None
+
+
+@dataclass
 class IRProgram:
     functions: list[IRFunction] = field(default_factory=list)
-    globals: list[str] = field(default_factory=list)
+    globals: list[IRGlobal] = field(default_factory=list)
+
+    slot_sizes: dict[str, int] = field(default_factory=dict)
+
+    def global_symbol_names(self) -> set[str]:
+        return {g.asm_name for g in self.globals}
 
     def add_function(self, func: IRFunction) -> None:
         self.functions.append(func)

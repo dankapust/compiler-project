@@ -4,7 +4,8 @@ from lexer.token import Token, TokenType
 from parser.ast import (
     ASTNode, ProgramNode,
     LiteralExpr, IdentifierExpr, MemberAccessExpr, BinaryExpr, UnaryExpr, CallExpr, AssignmentExpr, IncDecExpr,
-    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, ReturnStmt, VarDeclStmt, EmptyStmt,
+    BlockStmt, ExprStmt, IfStmt, WhileStmt, ForStmt, BreakStmt, ContinueStmt, SwitchCase, SwitchStmt,
+    ReturnStmt, VarDeclStmt, EmptyStmt,
     FunctionDecl, StructDecl, Param,
 )
 from parser.errors import ParseError, ErrorMetrics
@@ -23,7 +24,8 @@ _SYNC_TOKENS = frozenset({
     TokenType.SEMICOLON, TokenType.RBRACE,
     TokenType.KW_FN, TokenType.KW_STRUCT, TokenType.KW_IF, TokenType.KW_WHILE,
     TokenType.KW_FOR, TokenType.KW_RETURN, TokenType.KW_INT, TokenType.KW_FLOAT,
-    TokenType.KW_BOOL, TokenType.KW_VOID,
+    TokenType.KW_BOOL, TokenType.KW_VOID, TokenType.KW_BREAK, TokenType.KW_CONTINUE,
+    TokenType.KW_SWITCH, TokenType.KW_CASE, TokenType.KW_DEFAULT,
 })
 
 
@@ -146,6 +148,12 @@ class Parser:
             return self._for_stmt()
         if self._check(TokenType.KW_RETURN):
             return self._return_stmt()
+        if self._check(TokenType.KW_BREAK):
+            return self._break_stmt()
+        if self._check(TokenType.KW_CONTINUE):
+            return self._continue_stmt()
+        if self._check(TokenType.KW_SWITCH):
+            return self._switch_stmt()
         if self._match(TokenType.SEMICOLON):
             prev = self._previous()
             return EmptyStmt(prev.line, prev.column)
@@ -217,6 +225,62 @@ class Parser:
         self._consume(TokenType.SEMICOLON, "ожидалось ';' после return",
                       suggestion="Не забыли ли точку с запятой?")
         return ReturnStmt(tok.line, tok.column, value)
+
+    def _break_stmt(self) -> BreakStmt:
+        tok = self._consume(TokenType.KW_BREAK, "ожидалось ключевое слово 'break'")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после break",
+                      suggestion="Не забыли ли точку с запятой?")
+        return BreakStmt(tok.line, tok.column)
+
+    def _continue_stmt(self) -> ContinueStmt:
+        tok = self._consume(TokenType.KW_CONTINUE, "ожидалось ключевое слово 'continue'")
+        self._consume(TokenType.SEMICOLON, "ожидалось ';' после continue",
+                      suggestion="Не забыли ли точку с запятой?")
+        return ContinueStmt(tok.line, tok.column)
+
+    def _switch_stmt(self) -> SwitchStmt:
+        tok = self._consume(TokenType.KW_SWITCH, "ожидалось ключевое слово 'switch'")
+        self._consume(TokenType.LPAREN, "ожидалось '(' после 'switch'")
+        expr = self._expression()
+        self._consume(TokenType.RPAREN, "ожидалось ')' после выражения switch")
+        self._consume(TokenType.LBRACE, "ожидалось '{' после switch(...)")
+
+        cases: list[SwitchCase] = []
+        default_body: list[ASTNode] = []
+        has_default = False
+        while not self._check(TokenType.RBRACE) and not self._is_at_end():
+            if self._match(TokenType.KW_CASE):
+                case_tok = self._previous()
+                case_val = self._expression()
+                self._consume(TokenType.COLON, "ожидалось ':' после case")
+                body: list[ASTNode] = []
+                while (
+                    not self._check(TokenType.KW_CASE)
+                    and not self._check(TokenType.KW_DEFAULT)
+                    and not self._check(TokenType.RBRACE)
+                    and not self._is_at_end()
+                ):
+                    body.append(self._statement())
+                cases.append(SwitchCase(case_tok.line, case_tok.column, case_val, tuple(body)))
+                continue
+            if self._match(TokenType.KW_DEFAULT):
+                def_tok = self._previous()
+                if has_default:
+                    self._error_at(def_tok.line, def_tok.column, "повторная секция default в switch")
+                has_default = True
+                self._consume(TokenType.COLON, "ожидалось ':' после default")
+                while (
+                    not self._check(TokenType.KW_CASE)
+                    and not self._check(TokenType.RBRACE)
+                    and not self._is_at_end()
+                ):
+                    default_body.append(self._statement())
+                continue
+            self._error("ожидалось 'case' или 'default' внутри switch")
+            break
+
+        self._consume(TokenType.RBRACE, "ожидалось '}' после switch")
+        return SwitchStmt(tok.line, tok.column, expr, tuple(cases), tuple(default_body))
 
     def _expr_stmt(self) -> ExprStmt:
         expr = self._expression()
@@ -412,9 +476,9 @@ class Parser:
     def _synchronize(self) -> None:
         self.metrics.recovered_count += 1
         self._just_synced = True
-        
-        # Unconditionally advance once if we are not at EOF so we don't infinitely loop on the same Error-inducing token.
-        if not self._is_at_end():
+
+
+        if not self._is_at_end() and self._peek().type not in _SYNC_TOKENS:
             self._advance()
 
         while not self._is_at_end():

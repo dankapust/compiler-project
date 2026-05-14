@@ -1,0 +1,27 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function main: int ()
+  # Basic block: entry_main_1
+  entry_main_1:
+    [x_1] = STORE 5
+    t1:int = LOAD [x_1]
+    t2:bool = CMP_GT t1:int, 3
+    JUMP_IF t2:bool, L_then_3
+    JUMP L_endif_5
+
+  # Basic block: then branch
+  L_then_3:
+    RETURN 1
+    JUMP exit_main_2
+    JUMP L_endif_5
+
+  # Basic block: endif (join point)
+  L_endif_5:
+    RETURN 0
+    JUMP exit_main_2
+
+  # Basic block: exit_main_2
+  exit_main_2:

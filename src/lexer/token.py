@@ -20,6 +20,11 @@ class TokenType(Enum):
     KW_ELSE = auto()
     KW_WHILE = auto()
     KW_FOR = auto()
+    KW_BREAK = auto()
+    KW_CONTINUE = auto()
+    KW_SWITCH = auto()
+    KW_CASE = auto()
+    KW_DEFAULT = auto()
     KW_INT = auto()
     KW_FLOAT = auto()
     KW_BOOL = auto()
@@ -62,6 +67,7 @@ class TokenType(Enum):
     RBRACKET = auto()
     DOT = auto()
     COMMA = auto()
+    COLON = auto()
     SEMICOLON = auto()
 
 

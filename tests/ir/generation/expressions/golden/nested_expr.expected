@@ -1,0 +1,15 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function main: int ()
+  # Basic block: entry_main_1
+  entry_main_1:
+    t1:int = MUL 2, 3
+    t2:int = ADD t1:int, 4
+    RETURN t2:int
+    JUMP exit_main_2
+
+  # Basic block: exit_main_2
+  exit_main_2:

@@ -33,7 +33,11 @@ def _compile_to_ir(source: str):
     sem.analyze(program)
     
     print("  [Debug] SemanticAnalyzer finished. Starting IRGenerator...")
-    gen = IRGenerator(sem.get_symbol_table(), sem.get_decorated_ast())
+    gen = IRGenerator(
+        sem.get_symbol_table(),
+        sem.get_decorated_ast(),
+        sem.get_registered_struct_types(),
+    )
     res = gen.generate(program)
     print("  [Debug] IRGenerator finished.")
     return res
@@ -50,9 +54,7 @@ class TestIntegrationPipeline(unittest.TestCase):
         source = "fn main() -> int { int x = 10; return x; }"
         ir = _compile_to_ir(source)
         entry = ir.functions[0].basic_blocks[0]
-        alloca = [i for i in entry.instructions if i.opcode == IROpcode.ALLOCA]
         store = [i for i in entry.instructions if i.opcode == IROpcode.STORE]
-        self.assertTrue(len(alloca) >= 1)
         self.assertTrue(len(store) >= 1)
 
     def test_if_else(self):

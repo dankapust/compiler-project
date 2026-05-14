@@ -1,0 +1,33 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function main: int ()
+  # Basic block: entry_main_1
+  entry_main_1:
+    [i_1] = STORE 0
+    JUMP L_while_cond_3
+
+  # Basic block: L_while_cond_3
+  L_while_cond_3:
+    t1:int = LOAD [i_1]
+    t2:bool = CMP_LT t1:int, 10
+    JUMP_IF t2:bool, L_while_body_4
+    JUMP L_while_end_5
+
+  # Basic block: L_while_body_4
+  L_while_body_4:
+    t3:int = LOAD [i_1]
+    t4:int = ADD t3:int, 1
+    [i_1] = STORE t4:int
+    JUMP L_while_cond_3
+
+  # Basic block: L_while_end_5
+  L_while_end_5:
+    t5:int = LOAD [i_1]
+    RETURN t5:int
+    JUMP exit_main_2
+
+  # Basic block: exit_main_2
+  exit_main_2:

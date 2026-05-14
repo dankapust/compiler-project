@@ -1,5 +1,3 @@
-"""Preprocessor: comment removal and simple macros (Sprint 1 Stretch Goal)."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,8 +5,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PreprocessorError:
-    """Preprocessor error with line/column."""
-
     message: str
     line: int
     column: int
@@ -26,37 +22,24 @@ def _is_identifier_part(c: str) -> bool:
 
 
 class Preprocessor:
-    """
-    Preprocessor for comment removal and simple macros.
-
-    PRE-1: Removes // and /* */ comments, preserves line numbering.
-    PRE-2: Supports #define NAME value, #ifdef, #ifndef, #endif.
-    PRE-3: Preprocessor(source), process(), define(), undefine().
-    PRE-4: Comments in strings preserved, unterminated comments error, no macro recursion.
-    """
-
     def __init__(self, source: str):
         self._source = source
         self._macros: dict[str, str] = {}
         self.errors: list[PreprocessorError] = []
 
     def define(self, name: str, value: str) -> None:
-        """Define a macro (programmatic API)."""
         self._macros[name] = value
 
     def undefine(self, name: str) -> None:
-        """Undefine a macro (programmatic API)."""
         self._macros.pop(name, None)
 
     def process(self) -> str:
-        """Return cleaned source with comments removed and macros expanded."""
         self.errors.clear()
         result = self._process_directives_and_expand()
         result = self._remove_comments(result)
         return result
 
     def _process_directives_and_expand(self) -> str:
-        """Process directives and expand macros per-line. Return source with conditionals resolved."""
         lines = self._source.split("\n")
         output_lines: list[str] = []
         i = 0
@@ -132,7 +115,6 @@ class Preprocessor:
         return all(_is_identifier_part(c) for c in name[1:])
 
     def _remove_comments(self, source: str) -> str:
-        """Remove // and /* */ comments. Preserve strings. Preserve line numbering."""
         result: list[str] = []
         i = 0
         n = len(source)
@@ -220,7 +202,6 @@ class Preprocessor:
         return "".join(result)
 
     def _expand_macros_inner(self, source: str, expansion_stack: set[str]) -> str:
-        """Inner macro expansion with recursion guard."""
         result: list[str] = []
         i = 0
         n = len(source)

@@ -23,10 +23,10 @@ from semantic.output import (
     format_validation_report,
 )
 from ir import IRGenerator, format_ir_text, format_ir_dot, format_ir_json, format_ir_stats, PeepholeOptimizer
+from codegen.x86_generator import X86Generator
 
 
 def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
-    """Apply preprocessor if enabled. Return (source, preprocessor_errors)."""
     if not use_preprocessor:
         return source, []
     pp = Preprocessor(source)
@@ -34,7 +34,6 @@ def _preprocess(source: str, use_preprocessor: bool) -> tuple[str, list]:
 
 
 def _tokenize(source: str) -> tuple[list, list]:
-    """Tokenize source, return (tokens, scan_errors)."""
     scanner = Scanner(source)
     toks = []
     while True:
@@ -313,7 +312,11 @@ def _cmd_ir(args: argparse.Namespace) -> int:
         print("ir: пропущено из-за семантических ошибок", file=sys.stderr)
         return 1
 
-    generator = IRGenerator(sem.get_symbol_table(), sem.get_decorated_ast())
+    generator = IRGenerator(
+        sem.get_symbol_table(),
+        sem.get_decorated_ast(),
+        sem.get_registered_struct_types(),
+    )
     ir_prog = generator.generate(program)
 
     if args.optimize:
@@ -376,6 +379,59 @@ def _cmd_ir(args: argparse.Namespace) -> int:
             msg = e.stderr.strip() if e.stderr else "сбой dot"
             print(f"ошибка: сбой dot: {msg}", file=sys.stderr)
             return 2
+
+    return 0
+
+
+def _cmd_compile(args: argparse.Namespace) -> int:
+    src_path = Path(args.input)
+    try:
+        source = src_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"ошибка: не удалось прочитать входной файл: {e}", file=sys.stderr)
+        return 2
+
+    source, pp_errors = _preprocess(source, args.preprocess)
+    tokens, lex_errors = _tokenize(source)
+    parser = Parser(tokens=tokens)
+    program = parser.parse()
+
+    if pp_errors or lex_errors or parser.errors:
+        print("compile: пропущено из-за ошибок разбора", file=sys.stderr)
+        return 1
+
+    sem = SemanticAnalyzer(file_name=str(src_path))
+    sem.analyze(program)
+    if sem.get_errors():
+        print("compile: пропущено из-за семантических ошибок", file=sys.stderr)
+        return 1
+
+    generator = IRGenerator(
+        sem.get_symbol_table(),
+        sem.get_decorated_ast(),
+        sem.get_registered_struct_types(),
+    )
+    ir_prog = generator.generate(program)
+
+    if args.optimize:
+        optimizer = PeepholeOptimizer(ir_prog)
+        ir_prog = optimizer.optimize()
+
+    if args.target == "x86_64":
+        codegen = X86Generator(ir_prog)
+        asm = codegen.generate()
+    else:
+        print(f"ошибка: неподдерживаемая цель: {args.target}", file=sys.stderr)
+        return 2
+
+    if args.output:
+        try:
+            Path(args.output).write_text(asm, encoding="utf-8")
+        except OSError as e:
+            print(f"ошибка: не удалось записать выходной файл: {e}", file=sys.stderr)
+            return 2
+    else:
+        sys.stdout.write(asm + "\n")
 
     return 0
 
@@ -468,6 +524,14 @@ def main(argv: list[str] | None = None) -> int:
                          help="If format=dot and output is set, also run Graphviz to produce <output>.png")
     p_ir.add_argument("--no-preprocess", action="store_false", dest="preprocess")
     p_ir.set_defaults(func=_cmd_ir, preprocess=True)
+
+    p_compile = sub.add_parser("compile", help="Compile source to assembly")
+    p_compile.add_argument("--input", required=True)
+    p_compile.add_argument("--output", default=None)
+    p_compile.add_argument("--target", choices=["x86_64"], default="x86_64")
+    p_compile.add_argument("--optimize", action="store_true", help="Apply optimizations before codegen")
+    p_compile.add_argument("--no-preprocess", action="store_false", dest="preprocess")
+    p_compile.set_defaults(func=_cmd_compile, preprocess=True)
 
     args = ap.parse_args(argv)
     return int(args.func(args))

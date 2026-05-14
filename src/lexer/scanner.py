@@ -10,6 +10,11 @@ _KEYWORDS: dict[str, TokenType] = {
     "else": TokenType.KW_ELSE,
     "while": TokenType.KW_WHILE,
     "for": TokenType.KW_FOR,
+    "break": TokenType.KW_BREAK,
+    "continue": TokenType.KW_CONTINUE,
+    "switch": TokenType.KW_SWITCH,
+    "case": TokenType.KW_CASE,
+    "default": TokenType.KW_DEFAULT,
     "int": TokenType.KW_INT,
     "float": TokenType.KW_FLOAT,
     "bool": TokenType.KW_BOOL,
@@ -41,6 +46,7 @@ _OPERATOR_TABLE = {
     "]": ([], TokenType.RBRACKET, None),
     ".": ([], TokenType.DOT, None),
     ",": ([], TokenType.COMMA, None),
+    ":": ([], TokenType.COLON, None),
     ";": ([], TokenType.SEMICOLON, None),
 }
 

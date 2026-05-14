@@ -1,20 +1,5 @@
 from __future__ import annotations
 
-"""
-LL(1) tables (FIRST/FOLLOW/predictive) for the *syntax* grammar.
-
-This module is intentionally decoupled from the recursive-descent implementation:
-- It lets you validate that the written grammar is LL(1)
-- It produces tables you can paste into reports
-- It can emit Graphviz (.dot) to visualize conflicts
-
-Important note about "Type" vs "Identifier" ambiguity:
-In the language, user-defined types are introduced by `struct Name { ... }`.
-The parser keeps a dynamic set of known type names and treats an IDENTIFIER as a
-type-start only if it's in that set. With that refinement, the statement-level
-grammar becomes LL(1) again.
-"""
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -232,4 +217,3 @@ def compute_all(
     follow = compute_follow(g, first)
     table, conflicts = build_predict_table(g, first, follow)
     return g, first, follow, table, conflicts
-

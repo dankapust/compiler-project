@@ -1,0 +1,14 @@
+# Program: IR Generation
+# Generated IR
+
+.global main
+
+function main: bool ()
+  # Basic block: entry_main_1
+  entry_main_1:
+    t1:bool = CMP_EQ 1, 2
+    RETURN t1:bool
+    JUMP exit_main_2
+
+  # Basic block: exit_main_2
+  exit_main_2:

@@ -2,7 +2,7 @@ import sys
 import os
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "src"))
 
 from ir.ir_instructions import IROpcode, IRLabel
 from ir.ir_generator import IRGenerator
@@ -23,7 +23,11 @@ def _compile_to_ir(source: str):
     program = parser.parse()
     sem = SemanticAnalyzer(file_name="<test>")
     sem.analyze(program)
-    gen = IRGenerator(sem.get_symbol_table(), sem.get_decorated_ast())
+    gen = IRGenerator(
+        sem.get_symbol_table(),
+        sem.get_decorated_ast(),
+        sem.get_registered_struct_types(),
+    )
     return gen.generate(program)
 
 class TestIRValidation(unittest.TestCase):
